@@ -310,17 +310,18 @@ def bloco(ap, px, nome):
     lb = c1.number_input(f"Lucro Bruto (R$)", value=float(ap.get(f"{px}_lb") or 0), step=0.01, format="%.2f", key=f"{px}_lb")
     de = c1.number_input(f"Despesa (R$)",     value=float(ap.get(f"{px}_de") or 0), step=0.01, format="%.2f", key=f"{px}_de")
     res = lb - de
-    diz = res*0.10 if res>0 else 0
+    diz_sugerido = res*0.10 if res>0 else 0
     c2.metric("Resultado (=)", fmt(res))
-    c2.metric("Dízimo 10% automático", fmt(diz))
-    if diz>0: sug(f"Distribuição do Dízimo sugerida → 70% direto à Igreja = {fmt(diz*0.7)}  |  30% para Social + Missão = {fmt(diz*0.3)}")
+    if diz_sugerido>0: sug(f"Dízimo sugerido (10%) → {fmt(diz_sugerido)}  |  70% Igreja = {fmt(diz_sugerido*0.7)}  |  30% Soc+Mis = {fmt(diz_sugerido*0.3)}")
     c3,c4,c5 = st.columns(3)
-    of = c3.number_input("Oferta (R$)",  value=float(ap.get(f"{px}_oferta") or 0), step=0.01, format="%.2f", key=f"{px}_oferta")
-    so = c4.number_input("Social (R$)",  value=float(ap.get(f"{px}_social") or 0), step=0.01, format="%.2f", key=f"{px}_social")
+    diz = c3.number_input("Dízimo (R$) ✏️", value=float(ap.get(f"{px}_dizimo") or diz_sugerido), step=0.01, format="%.2f", key=f"{px}_dizimo")
+    of  = c4.number_input("Oferta (R$)",    value=float(ap.get(f"{px}_oferta") or 0), step=0.01, format="%.2f", key=f"{px}_oferta")
+    dp  = c5.number_input("Despesa Pessoal (R$)", value=float(ap.get(f"{px}_desp_pes") or 0), step=0.01, format="%.2f", key=f"{px}_desp_pes")
+    c6,c7 = st.columns(2)
+    so = c6.number_input("Social (R$)",  value=float(ap.get(f"{px}_social") or 0), step=0.01, format="%.2f", key=f"{px}_social")
     if diz>0: sug(f"Sugestão para Social (20% do dízimo) → {fmt(diz*0.2)}")
-    mi = c5.number_input("Missão (R$)",  value=float(ap.get(f"{px}_missao") or 0), step=0.01, format="%.2f", key=f"{px}_missao")
+    mi = c7.number_input("Missão (R$)",  value=float(ap.get(f"{px}_missao") or 0), step=0.01, format="%.2f", key=f"{px}_missao")
     if diz>0: sug(f"Sugestão para Missão (10% do dízimo) → {fmt(diz*0.1)}")
-    dp = st.number_input("Despesa Pessoal (R$)", value=float(ap.get(f"{px}_desp_pes") or 0), step=0.01, format="%.2f", key=f"{px}_desp_pes")
     tc = diz+of+so+mi
     ll_p = res - tc - dp
 
@@ -329,14 +330,18 @@ def bloco(ap, px, nome):
     c1,c2 = st.columns(2)
     lb2 = c1.number_input("Lucro Bruto S&F (R$)", value=float(ap.get(f"{px}_sf_lb") or 0), step=0.01, format="%.2f", key=f"{px}_sf_lb")
     de2 = c1.number_input("Despesa S&F (R$)",     value=float(ap.get(f"{px}_sf_de") or 0), step=0.01, format="%.2f", key=f"{px}_sf_de")
-    res2 = lb2-de2; diz2 = res2*0.10 if res2>0 else 0
+    res2 = lb2-de2
+    diz2_sugerido = res2*0.10 if res2>0 else 0
     c2.metric("Resultado S&F (=)", fmt(res2))
-    c2.metric("Dízimo S&F 10%", fmt(diz2))
-    if diz2>0: sug(f"Distribuição do Dízimo S&F sugerida → 70% direto à Igreja = {fmt(diz2*0.7)}  |  30% para Social + Missão = {fmt(diz2*0.3)}")
+    if diz2_sugerido>0: sug(f"Dízimo S&F sugerido (10%) → {fmt(diz2_sugerido)}  |  70% Igreja = {fmt(diz2_sugerido*0.7)}  |  30% Soc+Mis = {fmt(diz2_sugerido*0.3)}")
     c3,c4,c5 = st.columns(3)
-    of2 = c3.number_input("Oferta S&F (R$)", value=float(ap.get(f"{px}_sf_oferta") or 0), step=0.01, format="%.2f", key=f"{px}_sf_oferta")
-    so2 = c4.number_input("Social S&F (R$)", value=float(ap.get(f"{px}_sf_social") or 0), step=0.01, format="%.2f", key=f"{px}_sf_social")
-    mi2 = c5.number_input("Missão S&F (R$)", value=float(ap.get(f"{px}_sf_missao") or 0), step=0.01, format="%.2f", key=f"{px}_sf_missao")
+    diz2 = c3.number_input("Dízimo S&F (R$) ✏️", value=float(ap.get(f"{px}_sf_dizimo") or diz2_sugerido), step=0.01, format="%.2f", key=f"{px}_sf_dizimo")
+    of2  = c4.number_input("Oferta S&F (R$)",    value=float(ap.get(f"{px}_sf_oferta") or 0), step=0.01, format="%.2f", key=f"{px}_sf_oferta")
+    c6,c7 = st.columns(2)
+    so2 = c6.number_input("Social S&F (R$)", value=float(ap.get(f"{px}_sf_social") or 0), step=0.01, format="%.2f", key=f"{px}_sf_social")
+    if diz2>0: sug(f"Sugestão para Social S&F (20% do dízimo) → {fmt(diz2*0.2)}")
+    mi2 = c7.number_input("Missão S&F (R$)", value=float(ap.get(f"{px}_sf_missao") or 0), step=0.01, format="%.2f", key=f"{px}_sf_missao")
+    if diz2>0: sug(f"Sugestão para Missão S&F (10% do dízimo) → {fmt(diz2*0.1)}")
     tc2 = diz2+of2+so2+mi2
     ll_sf = res2-tc2
     total = ll_p+ll_sf
