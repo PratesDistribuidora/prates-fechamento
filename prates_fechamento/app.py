@@ -6,11 +6,19 @@ import streamlit as st
 from supabase import create_client
 from datetime import date, datetime
 import pandas as pd
-import hashlib
+import hashlib, os, base64
 
 SUPABASE_URL = st.secrets["SUPABASE_URL"]
 SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+@st.cache_data(show_spinner=False)
+def get_logo_b64():
+    for nome in ["logo.jpeg","logo.jpg","logo.png"]:
+        if os.path.exists(nome):
+            with open(nome,"rb") as f:
+                return base64.b64encode(f.read()).decode()
+    return None
 
 st.set_page_config(
     page_title="Fechamento Mensal · Grupo Prates",
@@ -177,13 +185,26 @@ def salvar_ir(mes, d):
     if ex.data: supabase.table("igreja_retiradas").update(d).eq("id",ex.data[0]["id"]).execute()
     else:        supabase.table("igreja_retiradas").insert(d).execute()
 
+
+def get_tarefas_custom():
+    r = supabase.table("tarefas_custom").select("*").order("secao").order("id").execute()
+    return r.data if r.data else []
+
+def add_tarefa_custom(secao, descricao):
+    supabase.table("tarefas_custom").insert({"secao": secao, "descricao": descricao}).execute()
+
+def del_tarefa_custom(id_tarefa):
+    supabase.table("tarefas_custom").delete().eq("id", id_tarefa).execute()
+
 def get_meses():
     r = supabase.table("apuracao").select("mes").execute()
     return sorted(set(d["mes"] for d in r.data), reverse=True)
 
 # ── LOGIN ─────────────────────────────────────────────────────────────────────
 def tela_login():
-    st.markdown('<div style="text-align:center;padding-top:60px"><div style="font-size:42px">📋</div><div style="font-size:22px;font-weight:700;color:#e2e8f0;margin:8px 0 4px">Fechamento Mensal</div><div style="font-size:13px;color:#6b7280;margin-bottom:32px">Grupo Prates · Macaé/RJ</div></div>', unsafe_allow_html=True)
+    logo = get_logo_b64()
+    logo_html = f'<img src="data:image/jpeg;base64,{logo}" width="90" style="border-radius:50%;margin-bottom:8px">' if logo else '<div style="font-size:42px">📋</div>'
+    st.markdown(f'<div style="text-align:center;padding-top:60px">{logo_html}<div style="font-size:22px;font-weight:700;color:#e2e8f0;margin:8px 0 4px">Fechamento Mensal</div><div style="font-size:13px;color:#6b7280;margin-bottom:32px">Grupo Prates · Macaé/RJ</div></div>', unsafe_allow_html=True)
     col = st.columns([1,1.2,1])[1]
     with col:
         st.markdown('<div style="background:#16191f;border:1px solid #252932;border-radius:12px;padding:32px">', unsafe_allow_html=True)
@@ -201,7 +222,10 @@ def tela_login():
 # ── SIDEBAR ───────────────────────────────────────────────────────────────────
 def sidebar():
     with st.sidebar:
-        st.markdown('<div style="text-align:center;padding:20px 8px 8px"><div style="font-size:32px">📋</div><div style="font-size:14px;font-weight:700;color:#e2e8f0;margin:4px 0 2px">Fechamento Mensal</div><div style="font-size:11px;color:#6b7280">Grupo Prates</div></div>', unsafe_allow_html=True)
+        logo = get_logo_b64()
+        if logo:
+            st.markdown(f'<div style="text-align:center;padding:16px 8px 4px"><img src="data:image/jpeg;base64,{logo}" width="80" style="border-radius:50%"></div>', unsafe_allow_html=True)
+        st.markdown('<div style="text-align:center;padding:4px 8px 8px"><div style="font-size:14px;font-weight:700;color:#e2e8f0;margin:4px 0 2px">Fechamento Mensal</div><div style="font-size:11px;color:#6b7280">Grupo Prates</div></div>', unsafe_allow_html=True)
         st.markdown('<hr style="border-color:#252932;margin:10px 0">', unsafe_allow_html=True)
         mes = st.text_input("📅 Mês de referência", value=datetime.today().strftime('%Y-%m'), key="mes_ref")
         st.markdown('<hr style="border-color:#252932;margin:10px 0">', unsafe_allow_html=True)
@@ -231,18 +255,50 @@ def pagina_checklist(mes):
     cor = "#22c55e" if pct==100 else "#2d7a4f" if pct>=50 else "#d97706"
     st.markdown(f'<div style="background:#252932;border-radius:6px;height:10px;margin:8px 0 20px"><div style="background:{cor};width:{pct}%;height:10px;border-radius:6px"></div></div>', unsafe_allow_html=True)
     if pct==100: st.success("🎉 Fechamento 100% concluído! Glória a Deus!")
-    for secao, tarefas in TAREFAS:
+    tarefas_custom = get_tarefas_custom()
+    custom_por_secao = {}
+    for tc in tarefas_custom:
+        custom_por_secao.setdefault(tc["secao"], []).append(tc)
+
+    todas_secoes = list(dict.fromkeys([s for s,_ in TAREFAS] + list(custom_por_secao.keys())))
+
+    for secao in todas_secoes:
         sec(secao)
-        for tarefa in tarefas:
+        tarefas_fixas = dict(TAREFAS).get(secao, [])
+        tarefas_desta_secao = list(tarefas_fixas) + [t["descricao"] for t in custom_por_secao.get(secao, [])]
+        ids_custom = {t["descricao"]: t["id"] for t in custom_por_secao.get(secao, [])}
+
+        for tarefa in tarefas_desta_secao:
             d = dados.get(tarefa,{})
             st_at = d.get("status","☐ Pendente")
             ob_at = d.get("obs","")
-            with st.expander(f"{st_at[:2]}  {tarefa}"):
+            is_custom = tarefa in ids_custom
+            label = f"{st_at[:2]}  {tarefa}" + (" 🔧" if is_custom else "")
+            with st.expander(label):
                 c1,c2 = st.columns([2,3])
                 ns = c1.selectbox("Status",STATUS_OPTS, index=STATUS_OPTS.index(st_at) if st_at in STATUS_OPTS else 0, key=f"st_{mes}_{tarefa}")
                 no = c2.text_input("Observação", value=ob_at, key=f"ob_{mes}_{tarefa}")
-                if st.button("💾 Salvar", key=f"sv_{mes}_{tarefa}"):
+                col_s, col_d = st.columns([3,1])
+                if col_s.button("💾 Salvar", key=f"sv_{mes}_{tarefa}"):
                     salvar_tarefa(mes, tarefa, ns, no); st.success("Salvo!"); st.rerun()
+                if is_custom:
+                    if col_d.button("🗑️ Excluir", key=f"del_{tarefa}"):
+                        del_tarefa_custom(ids_custom[tarefa]); st.success("Tarefa excluída!"); st.rerun()
+
+    st.markdown('<hr style="border-color:#252932;margin:20px 0">', unsafe_allow_html=True)
+    sec("➕ Adicionar Nova Tarefa Personalizada")
+    secoes_disponiveis = [s for s,_ in TAREFAS] + ["NOVA SEÇÃO PERSONALIZADA"]
+    c1,c2,c3 = st.columns([2,3,1])
+    secao_nova = c1.selectbox("Seção", secoes_disponiveis, key="nova_secao")
+    if secao_nova == "NOVA SEÇÃO PERSONALIZADA":
+        secao_nova = c1.text_input("Nome da nova seção", key="nome_nova_secao")
+    desc_nova = c2.text_input("Descrição da tarefa", key="nova_tarefa_desc")
+    if c3.button("➕ Adicionar", key="btn_add_tarefa"):
+        if desc_nova and secao_nova:
+            add_tarefa_custom(secao_nova, desc_nova)
+            st.success(f"Tarefa adicionada!"); st.rerun()
+        else:
+            st.warning("Preencha a seção e a descrição.")
 
 # ── APURAÇÃO ──────────────────────────────────────────────────────────────────
 def ni(label, key, ap):
@@ -257,13 +313,13 @@ def bloco(ap, px, nome):
     diz = res*0.10 if res>0 else 0
     c2.metric("Resultado (=)", fmt(res))
     c2.metric("Dízimo 10% automático", fmt(diz))
-    if diz>0: sug(f"70% Igreja = {fmt(diz*0.7)}  |  30% Soc+Mis = {fmt(diz*0.3)}")
+    if diz>0: sug(f"Distribuição do Dízimo sugerida → 70% direto à Igreja = {fmt(diz*0.7)}  |  30% para Social + Missão = {fmt(diz*0.3)}")
     c3,c4,c5 = st.columns(3)
     of = c3.number_input("Oferta (R$)",  value=float(ap.get(f"{px}_oferta") or 0), step=0.01, format="%.2f", key=f"{px}_oferta")
     so = c4.number_input("Social (R$)",  value=float(ap.get(f"{px}_social") or 0), step=0.01, format="%.2f", key=f"{px}_social")
-    if diz>0: sug(f"Sugestão: {fmt(diz*0.2)}")
+    if diz>0: sug(f"Sugestão para Social (20% do dízimo) → {fmt(diz*0.2)}")
     mi = c5.number_input("Missão (R$)",  value=float(ap.get(f"{px}_missao") or 0), step=0.01, format="%.2f", key=f"{px}_missao")
-    if diz>0: sug(f"Sugestão: {fmt(diz*0.1)}")
+    if diz>0: sug(f"Sugestão para Missão (10% do dízimo) → {fmt(diz*0.1)}")
     dp = st.number_input("Despesa Pessoal (R$)", value=float(ap.get(f"{px}_desp_pes") or 0), step=0.01, format="%.2f", key=f"{px}_desp_pes")
     tc = diz+of+so+mi
     ll_p = res - tc - dp
@@ -276,7 +332,7 @@ def bloco(ap, px, nome):
     res2 = lb2-de2; diz2 = res2*0.10 if res2>0 else 0
     c2.metric("Resultado S&F (=)", fmt(res2))
     c2.metric("Dízimo S&F 10%", fmt(diz2))
-    if diz2>0: sug(f"70% Igreja = {fmt(diz2*0.7)}  |  30% Soc+Mis = {fmt(diz2*0.3)}")
+    if diz2>0: sug(f"Distribuição do Dízimo S&F sugerida → 70% direto à Igreja = {fmt(diz2*0.7)}  |  30% para Social + Missão = {fmt(diz2*0.3)}")
     c3,c4,c5 = st.columns(3)
     of2 = c3.number_input("Oferta S&F (R$)", value=float(ap.get(f"{px}_sf_oferta") or 0), step=0.01, format="%.2f", key=f"{px}_sf_oferta")
     so2 = c4.number_input("Social S&F (R$)", value=float(ap.get(f"{px}_sf_social") or 0), step=0.01, format="%.2f", key=f"{px}_sf_social")
