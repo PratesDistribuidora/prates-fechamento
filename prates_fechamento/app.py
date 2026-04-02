@@ -312,7 +312,7 @@ def bloco(ap, px, nome):
     res = lb - de
     diz_sugerido = res*0.10 if res>0 else 0
     c2.metric("Resultado (=)", fmt(res))
-    if diz_sugerido>0: sug(f"Dízimo sugerido (10%) → {fmt(diz_sugerido)}  |  70% Igreja = {fmt(diz_sugerido*0.7)}  |  30% Soc+Mis = {fmt(diz_sugerido*0.3)}")
+    if diz_sugerido>0: sug(f"Dízimo sugerido (10%) → {fmt(diz_sugerido)}  |  70% Igreja = {fmt(diz_sugerido*0.7)}  |  20% Social = {fmt(diz_sugerido*0.2)}  |  10% Missão = {fmt(diz_sugerido*0.1)}")
     c3,c4,c5 = st.columns(3)
     diz = c3.number_input("Dízimo (R$) ✏️", value=float(ap.get(f"{px}_dizimo") or diz_sugerido), step=0.01, format="%.2f", key=f"{px}_dizimo")
     of  = c4.number_input("Oferta (R$)",    value=float(ap.get(f"{px}_oferta") or 0), step=0.01, format="%.2f", key=f"{px}_oferta")
@@ -333,7 +333,7 @@ def bloco(ap, px, nome):
     res2 = lb2-de2
     diz2_sugerido = res2*0.10 if res2>0 else 0
     c2.metric("Resultado S&F (=)", fmt(res2))
-    if diz2_sugerido>0: sug(f"Dízimo S&F sugerido (10%) → {fmt(diz2_sugerido)}  |  70% Igreja = {fmt(diz2_sugerido*0.7)}  |  30% Soc+Mis = {fmt(diz2_sugerido*0.3)}")
+    if diz2_sugerido>0: sug(f"Dízimo S&F sugerido (10%) → {fmt(diz2_sugerido)}  |  70% Igreja = {fmt(diz2_sugerido*0.7)}  |  20% Social = {fmt(diz2_sugerido*0.2)}  |  10% Missão = {fmt(diz2_sugerido*0.1)}")
     c3,c4,c5 = st.columns(3)
     diz2 = c3.number_input("Dízimo S&F (R$) ✏️", value=float(ap.get(f"{px}_sf_dizimo") or diz2_sugerido), step=0.01, format="%.2f", key=f"{px}_sf_dizimo")
     of2  = c4.number_input("Oferta S&F (R$)",    value=float(ap.get(f"{px}_sf_oferta") or 0), step=0.01, format="%.2f", key=f"{px}_sf_oferta")
