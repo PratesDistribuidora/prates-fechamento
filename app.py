@@ -1,622 +1,515 @@
 """
-app.py — Sistema Prates Sublimação v5
-Leve, rápido e visual limpo.
-Execute com: python -m streamlit run app.py
+app.py — Sistema Fechamento Mensal · Grupo Prates v2
+Checklist + Apuração + Metas + Igreja & Retiradas + Resumo WhatsApp
 """
 import streamlit as st
-import pandas as pd
+from supabase import create_client
 from datetime import date, datetime
-import plotly.express as px
-import plotly.graph_objects as go
-import base64, os
+import pandas as pd
+import hashlib, os, base64
 
-from database import (
-    init_db, get_parametros, set_parametro,
-    get_fornecedores, update_fornecedor, get_preco_kg, add_fornecedor,
-    get_faccionistas, update_faccionista, get_preco_costura,
-    get_skus, upsert_sku,
-    get_relatorio_mensal, add_registro_mensal, delete_registro_mensal,
-    get_historico, add_historico,
-)
-from calculadora import (
-    calcular_sku_completo, calcular_manual, calcular_lote,
-    gerar_tabela_catalogo, resumo_dashboard,
-)
-
-st.set_page_config(
-    page_title="Prates Sublimação",
-    page_icon="🧵",
-    layout="wide",
-    initial_sidebar_state="expanded",
-)
-init_db()
+SUPABASE_URL = st.secrets["SUPABASE_URL"]
+SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 @st.cache_data(show_spinner=False)
-def get_logo():
-    if os.path.exists("logo.png"):
-        with open("logo.png","rb") as f:
-            return base64.b64encode(f.read()).decode()
+def get_logo_b64():
+    for nome in ["logo.jpeg","logo.jpg","logo.png"]:
+        if os.path.exists(nome):
+            with open(nome,"rb") as f:
+                return base64.b64encode(f.read()).decode()
     return None
 
-_LOGO = get_logo()
+st.set_page_config(
+    page_title="Fechamento Mensal · Grupo Prates",
+    page_icon="📋", layout="wide",
+    initial_sidebar_state="expanded",
+)
 
-# CSS limpo e leve
+TAREFAS = [
+    ("RELATÓRIOS E LANÇAMENTOS", [
+        "Relatório — Conferir e Lançar Prates Eletrônico",
+        "Relatório — Lançar Sobras e Faltas Caixa Prates Eletrônico",
+        "Relatório — Conferir e Lançar Prates Sublimação",
+        "Relatório — Lançar Sobras e Faltas Caixa Prates Sublimação",
+    ]),
+    ("DOCUMENTOS E VERIFICAÇÕES FINANCEIRAS", [
+        "Boletos",
+        "Papéis Amarelos (Cartão)",
+        "Caderno (Pagamento Funcionários)",
+        "Cartão Banco do Brasil",
+        "Verificar Taxa Máquina Cartão",
+        "Lançar o Valor da Construção da Casa (se houve retirada)",
+    ]),
+    ("APURAÇÃO DE LUCROS E PERDAS", [
+        "Verificar Lucros Prates Eletrônicos",
+        "Verificar Lucro em Sobras e Perdas — Prates Eletrônicos",
+        "Verificar Lucros Prates Sublimação",
+        "Verificar Lucro em Sobras e Perdas — Prates Sublimação",
+        "Verificar as Perdas de Produtos com Baixa no C-plus",
+        "Verificar Faltas de Produtos no Estoque Eletrônico",
+        "Verificar Faltas de Produtos no Estoque Sublimação",
+    ]),
+    ("LANÇAMENTO DE DÍZIMOS", [
+        "Lançar o Dízimo da Prates Eletrônico — Principal",
+        "Lançar o Dízimo das Sobras e Faltas — Prates Eletrônico",
+        "Lançar o Dízimo da Prates Sublimação — Principal",
+        "Lançar o Dízimo das Sobras e Faltas — Prates Sublimação",
+    ]),
+    ("LANÇAMENTOS NO SISTEMA DE DESPESAS", [
+        "Lançar Lucro da Prates Eletrônico no Sistema de Despesas",
+        "Lançar Lucro Sobras e Faltas Eletrônico no Sistema de Despesas",
+        "Lançar Lucro da Prates Sublimação no Sistema de Despesas",
+        "Lançar Lucro Sobras e Faltas Sublimação no Sistema de Despesas",
+    ]),
+    ("TRANSFERÊNCIAS DE CAIXA", [
+        "Transferência do Caixa Eletrônico para Despesa Pessoal",
+        "Transferência do Caixa Eletrônico para a Igreja",
+        "Transferência Sobras e Faltas Eletrônico para a Igreja",
+        "Transferência do Caixa Sublimação para a Igreja",
+        "Transferência Sobras e Faltas Sublimação para a Igreja",
+    ]),
+]
+TOTAL_TAREFAS = sum(len(ts) for _, ts in TAREFAS)
+STATUS_OPTS = ["☐ Pendente", "⏳ Em Andamento", "✅ Concluído", "⊘ N/A"]
+
 st.markdown("""
 <style>
-[data-testid="stSidebar"] { background: #0d1117; }
-[data-testid="stSidebar"] * { color: #e6e6e6 !important; }
-[data-testid="stAppViewContainer"] { background: #0a0e1a; }
-.stButton > button {
-    background: #00c04b; color: white; border: none;
-    border-radius: 6px; font-weight: 600;
-    transition: background 0.2s;
+html,body,[class*="css"]{font-family:'Segoe UI',sans-serif;}
+[data-testid="stAppViewContainer"]{background:#111318;}
+[data-testid="stHeader"]{background:transparent;}
+[data-testid="stSidebar"]{background:#16191f;border-right:1px solid #252932;}
+[data-testid="stSidebar"] *{color:#c5cad3 !important;}
+[data-testid="stSidebar"] .stButton>button,
+[data-testid="stSidebar"] [data-testid="stBaseButton-secondary"]{
+    background:transparent !important;border:none !important;
+    border-left:3px solid transparent !important;border-radius:0 5px 5px 0 !important;
+    color:#8892a0 !important;font-size:13px !important;font-weight:400 !important;
+    padding:7px 14px !important;text-align:left !important;
+    margin:1px 0 !important;box-shadow:none !important;
+    width:100% !important;display:block !important;
 }
-.stButton > button:hover { background: #00a03e; }
-[data-testid="stMetric"] {
-    background: #111827; border-radius: 8px;
-    padding: 14px 16px; border: 1px solid #1e2d45;
+[data-testid="stSidebar"] .stButton>button:hover,
+[data-testid="stSidebar"] [data-testid="stBaseButton-secondary"]:hover{
+    background:#1a2235 !important;color:#c5cad3 !important;
+    border-left:3px solid #2d7a4f44 !important;
 }
-[data-testid="stMetricValue"] { color: #e8f0fe !important; }
-[data-testid="stMetricLabel"] { color: #6b7a90 !important; font-size: 12px !important; }
-[data-testid="stTabs"] [role="tab"][aria-selected="true"] {
-    color: #00c04b !important; border-bottom: 2px solid #00c04b !important;
+[data-testid="stSidebar"] .stButton>button div,
+[data-testid="stSidebar"] .stButton>button p,
+[data-testid="stSidebar"] [data-testid="stBaseButton-secondary"] div,
+[data-testid="stSidebar"] [data-testid="stBaseButton-secondary"] p{
+    text-align:left !important;margin:0 !important;width:100% !important;display:block !important;
 }
-.card-v { background:#0f1f12; border-radius:8px; padding:16px; border:1px solid #00c04b33; text-align:center; }
-.card-v h4 { margin:0; font-size:11px; color:#4a7a5a; text-transform:uppercase; }
-.card-v p  { margin:6px 0 0; font-size:22px; font-weight:700; color:#00c04b; }
-.card-c { background:#111827; border-radius:8px; padding:16px; border:1px solid #1e2d45; text-align:center; }
-.card-c h4 { margin:0; font-size:11px; color:#4a5a6a; text-transform:uppercase; }
-.card-c p  { margin:6px 0 0; font-size:22px; font-weight:700; color:#c8d6e8; }
-.card-a { background:#1f0f0f; border-radius:8px; padding:16px; border:1px solid #e05c5c33; text-align:center; }
-.card-a h4 { margin:0; font-size:11px; color:#7a4a4a; text-transform:uppercase; }
-.card-a p  { margin:6px 0 0; font-size:22px; font-weight:700; color:#e05c5c; }
-.sec { font-size:13px; font-weight:600; color:#6b7a90; text-transform:uppercase; letter-spacing:1px; margin:16px 0 8px; }
+.stButton>button{background:#1e6b3e;color:#fff;border:none;border-radius:5px;padding:6px 16px;font-size:13px;font-weight:500;}
+.stButton>button:hover{background:#248a4e;}
+[data-testid="stMetric"]{background:#16191f;border-radius:6px;padding:12px 14px;border:1px solid #252932;}
+[data-testid="stMetricLabel"]{color:#6b7280 !important;font-size:11px !important;}
+[data-testid="stMetricValue"]{color:#e2e8f0 !important;font-size:20px !important;font-weight:600 !important;}
+[data-testid="stTextInput"] input,[data-testid="stNumberInput"] input{
+    background:#16191f !important;border:1px solid #252932 !important;
+    border-radius:5px !important;color:#e2e8f0 !important;font-size:13px !important;
+}
+[data-testid="stSelectbox"]>div>div{background:#16191f !important;border:1px solid #252932 !important;border-radius:5px !important;}
+[data-testid="stExpander"]{background:#16191f !important;border:1px solid #252932 !important;border-radius:6px !important;margin-bottom:4px !important;}
+[data-testid="stTabs"] [role="tablist"]{background:transparent;border-bottom:1px solid #252932;}
+[data-testid="stTabs"] [role="tab"]{color:#6b7280 !important;font-size:13px !important;padding:8px 16px !important;}
+[data-testid="stTabs"] [role="tab"][aria-selected="true"]{color:#e2e8f0 !important;border-bottom:2px solid #2d7a4f !important;font-weight:600 !important;}
+[data-testid="stInfo"]{background:#0d1e35 !important;border:1px solid #1a3a5c !important;color:#7eb8f7 !important;border-radius:6px !important;}
+[data-testid="stSuccess"]{background:#0a1f12 !important;border:1px solid #1a4a2a !important;border-radius:6px !important;}
+[data-testid="stWarning"]{background:#1f1a0a !important;border:1px solid #3a2a0a !important;border-radius:6px !important;}
+[data-testid="stTextArea"] textarea{background:#16191f !important;border:1px solid #252932 !important;color:#e2e8f0 !important;font-size:13px !important;font-family:monospace !important;}
+.page-title{font-size:18px;font-weight:600;color:#e2e8f0;padding-bottom:10px;border-bottom:1px solid #252932;margin-bottom:20px;}
+.sec-label{font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.8px;margin:16px 0 8px 0;}
+.sugestao{background:#0d1e35;border:1px solid #1a3a5c;border-radius:6px;padding:8px 12px;font-size:12px;color:#7eb8f7;margin:4px 0 8px;}
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:#111318;}
+::-webkit-scrollbar-thumb{background:#252932;border-radius:3px;}
 </style>
 """, unsafe_allow_html=True)
 
-# Sidebar
-with st.sidebar:
-    if _LOGO:
-        st.markdown(
-            f'<div style="text-align:center;padding:12px 4px 4px">'
-            f'<img src="data:image/png;base64,{_LOGO}" width="140" '
-            f'style="border-radius:8px"></div>',
-            unsafe_allow_html=True
-        )
-    st.markdown("---")
-    pagina = st.radio("", [
-        "📊 Dashboard","🧮 Simulador de Preço","🔄 Margem Reversa",
-        "📦 Simulador de Lote","📤 Tabela para Cliente",
-        "📈 Relatório Mensal","⚙️ Configurações",
-        "📋 Histórico de Preços","📥 Importar Planilha",
-    ], label_visibility="collapsed")
-    st.markdown("---")
-    st.caption("Prates Sublimação · Macaé/RJ · v5.0")
-
-# Helpers
 def fmt(v):
-    if v is None: return "—"
-    return f"R$ {v:,.2f}".replace(",","X").replace(".",",").replace("X",".")
-def fpct(v): return f"{v*100:.1f}%"
-def cv(l,v): return f'<div class="card-v"><h4>{l}</h4><p>{fmt(v)}</p></div>'
-def cc(l,v): return f'<div class="card-c"><h4>{l}</h4><p>{fmt(v)}</p></div>'
-def ca(l,v): return f'<div class="card-a"><h4>{l}</h4><p>{fmt(v)}</p></div>'
-def sec(t): st.markdown(f'<p class="sec">{t}</p>', unsafe_allow_html=True)
-def titulo(t):
-    st.markdown(f'<h2 style="color:#00c04b;border-bottom:2px solid #00c04b33;padding-bottom:8px;margin-bottom:20px">{t}</h2>', unsafe_allow_html=True)
+    if v is None or v == "": return "—"
+    try: return f"R$ {float(v):,.2f}".replace(",","X").replace(".",",").replace("X",".")
+    except: return "—"
 
-@st.cache_data(ttl=30, show_spinner=False)
-def catalogo_cache():
-    return gerar_tabela_catalogo()
+def titulo(t): st.markdown(f'<div class="page-title">{t}</div>', unsafe_allow_html=True)
+def sec(t):    st.markdown(f'<p class="sec-label">{t}</p>', unsafe_allow_html=True)
+def sug(t):    st.markdown(f'<div class="sugestao">💡 {t}</div>', unsafe_allow_html=True)
+def nv(v):
+    try: return float(v) if v else 0.0
+    except: return 0.0
 
-def get_opcoes():
-    s = get_skus()
-    return s, sorted(set(x['modelo'] for x in s)), sorted(set(x['tecido'] for x in s))
-def cores(s,m,t): return sorted(set(x['cor'] for x in s if x['modelo']==m and x['tecido']==t))
-def tams(s,m,t,c): return sorted(set(x['tamanho'] for x in s if x['modelo']==m and x['tecido']==t and x['cor']==c))
+def hash_senha(s): return hashlib.sha256(s.encode()).hexdigest()
 
-CHART = dict(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-             font_color='#8899b0', height=220, margin=dict(l=10,r=10,t=30,b=10))
+def login_valido(u, s):
+    r = supabase.table("usuarios").select("*").eq("usuario",u).eq("senha_hash",hash_senha(s)).execute()
+    return len(r.data) > 0
 
-# ══ DASHBOARD ══════════════════════════════
-if pagina=="📊 Dashboard":
-    titulo("📊 Dashboard")
-    kpis = resumo_dashboard()
-    if not kpis:
-        st.warning("Nenhum SKU cadastrado.")
-    else:
-        c1,c2,c3,c4,c5,c6 = st.columns(6)
-        c1.metric("Total SKUs", kpis['total_skus'])
-        c2.metric("Menor Custo", fmt(kpis['menor_custo']))
-        c3.metric("Maior Custo", fmt(kpis['maior_custo']))
-        c4.metric("Menor SR", fmt(kpis['menor_sr']))
-        c5.metric("Maior SR", fmt(kpis['maior_sr']))
-        c6.metric("Margem SR Média", fmt(kpis['margem_sr_media']))
-        st.markdown("---")
-        df = pd.DataFrame(catalogo_cache())
-        col1,col2 = st.columns(2)
-        with col1:
-            sec("Custo Médio × Super Revenda por Modelo")
-            dm = df.groupby('Modelo').agg(Custo=('Custo Final','mean'),SR=('Super Revenda','mean')).reset_index().round(2)
-            fig = go.Figure()
-            fig.add_bar(x=dm['Modelo'],y=dm['Custo'],name='Custo',marker_color='#e05c5c')
-            fig.add_bar(x=dm['Modelo'],y=dm['SR'],name='Super Revenda',marker_color='#00c04b')
-            fig.update_layout(barmode='group',**CHART,legend=dict(orientation='h',y=1.1,font_color='#8899b0'))
-            fig.update_xaxes(gridcolor='#1a2535'); fig.update_yaxes(gridcolor='#1a2535')
-            st.plotly_chart(fig, use_container_width=True)
-        with col2:
-            sec("Margem SR por Tecido")
-            dt = df.groupby('Tecido').agg(C=('Custo Final','mean'),S=('Super Revenda','mean')).reset_index()
-            dt['Margem'] = (dt['S']-dt['C']).round(2)
-            fig2 = px.bar(dt,x='Tecido',y='Margem',color='Tecido',
-                         color_discrete_sequence=['#00c04b','#ff6b1a','#3b82f6','#f6c90e'])
-            fig2.update_layout(**CHART,showlegend=False)
-            fig2.update_xaxes(gridcolor='#1a2535'); fig2.update_yaxes(gridcolor='#1a2535')
-            st.plotly_chart(fig2, use_container_width=True)
-        col3,col4 = st.columns(2)
-        with col3:
-            sec("SKUs por Tecido")
-            dp = df.groupby('Tecido').size().reset_index(name='SKUs')
-            fig3 = px.pie(dp,names='Tecido',values='SKUs',hole=0.4,
-                         color_discrete_sequence=['#00c04b','#ff6b1a','#3b82f6','#f6c90e'])
-            fig3.update_layout(**CHART)
-            st.plotly_chart(fig3, use_container_width=True)
-        with col4:
-            sec("Top 10 SKUs Mais Caros")
-            st.dataframe(df.nlargest(10,'Custo Final')[['Modelo','Tecido','Cor','Tamanho','Custo Final']].reset_index(drop=True),
-                        use_container_width=True, hide_index=True)
-        st.markdown("---")
-        sec("Costura Ativa por Modelo")
-        st.dataframe(pd.DataFrame([{
-            'Modelo':f['modelo'],'Faccionista':f['faccionista_ativa'],
-            'Preço Ativo':fmt(get_preco_costura(f['modelo']))
-        } for f in get_faccionistas()]), use_container_width=True, hide_index=True)
+def get_checklist(mes):
+    r = supabase.table("checklist").select("*").eq("mes",mes).execute()
+    return {d["tarefa"]:d for d in r.data}
 
-# ══ SIMULADOR ══════════════════════════════
-elif pagina=="🧮 Simulador de Preço":
-    titulo("🧮 Simulador de Preço")
-    ta,tb = st.tabs(["📋 Produto do Catálogo","✏️ Produto Avulso"])
-    with ta:
-        st.info("Selecione o produto e veja custo + preços calculados automaticamente.")
-        skus,mods,_ = get_opcoes()
-        c1,c2 = st.columns(2)
-        with c1:
-            ma = st.selectbox("Modelo",mods,key="sa_m")
-            ts = sorted(set(s['tecido'] for s in skus if s['modelo']==ma))
-            ta_ = st.selectbox("Tecido",ts,key="sa_t")
-        with c2:
-            cr = cores(skus,ma,ta_)
-            ca_ = st.selectbox("Cor",cr,key="sa_c") if cr else None
-            tm = tams(skus,ma,ta_,ca_) if ca_ else []
-            tm_ = st.selectbox("Tamanho",tm,key="sa_tam") if tm else None
-        if ca_ and tm_:
-            calc = calcular_sku_completo(ma,ta_,ca_,tm_)
-            if calc:
-                st.markdown("---")
-                sec("Detalhamento do Custo")
-                c1,c2,c3,c4,c5,c6,c7 = st.columns(7)
-                c1.metric("Peso",f"{calc['peso_g']}g")
-                c2.metric("R$/kg",fmt(calc['preco_kg']))
-                c3.metric("Tecido",fmt(calc['custo_tecido']))
-                c4.metric("Costura",fmt(calc['costura']))
-                c5.metric("Frete 5%",fmt(calc['frete']))
-                c6.metric("Outros 3%",fmt(calc['outros']))
-                c7.metric("Embalagem",fmt(calc['embalagem']))
-                st.markdown("---")
-                sec("Preços de Venda")
-                p1,p2,p3,p4,p5 = st.columns(5)
-                p1.markdown(cc("📋 Subtotal",calc['subtotal']),unsafe_allow_html=True)
-                p2.markdown(cc("✅ Custo Final",calc['custo_final']),unsafe_allow_html=True)
-                p3.markdown(cv("🟢 Super Revenda +20%",calc['super_revenda']),unsafe_allow_html=True)
-                p4.markdown(cv("🔵 Atacado +35%",calc['atacado']),unsafe_allow_html=True)
-                p5.markdown(cv("🔴 Varejo +50%",calc['varejo']),unsafe_allow_html=True)
-                st.markdown("---")
-                if st.button("📄 Gerar Ficha de Custo PDF"):
-                    from pdf_gerador import gerar_pdf_ficha_custo
-                    pdf = gerar_pdf_ficha_custo(calc)
-                    st.download_button("⬇️ Baixar PDF",pdf,
-                        file_name=f"ficha_{ma}_{ta_}_{ca_}_{tm_}.pdf".replace(" ","_"),
-                        mime="application/pdf")
-    with tb:
-        st.info("Para produtos não cadastrados — informe os dados manualmente.")
-        c1,c2 = st.columns(2)
-        with c1:
-            desc = st.text_input("Descrição","Ex: Blusa Polo")
-            peso = st.number_input("Peso (g)",1.0,value=200.0,step=5.0)
-            pkg  = st.number_input("Valor/kg (R$)",0.0,value=28.0,step=0.5)
-        with c2:
-            p = get_parametros()
-            cost = st.number_input("Costura (R$/peça)",0.0,value=4.0,step=0.5)
-            out  = st.number_input("Outros (%)",0.0,1.0,float(p.get('outros_pct',0.03)),0.01,format="%.2f")
-            emb  = st.number_input("Embalagem (R$)",0.0,value=float(p.get('embalagem',0.0)),step=0.5)
-        if st.button("🧮 Calcular",key="calc_b"):
-            cb = calcular_manual(peso,pkg,cost,emb,out)
-            st.markdown(f"---")
-            sec(f"Resultado — {desc}")
-            p1,p2,p3,p4 = st.columns(4)
-            p1.markdown(cc("✅ Custo Final",cb['custo_final']),unsafe_allow_html=True)
-            p2.markdown(cv("🟢 Super Revenda",cb['super_revenda']),unsafe_allow_html=True)
-            p3.markdown(cv("🔵 Atacado",cb['atacado']),unsafe_allow_html=True)
-            p4.markdown(cv("🔴 Varejo",cb['varejo']),unsafe_allow_html=True)
+def salvar_tarefa(mes, tarefa, status, obs):
+    ex = supabase.table("checklist").select("id").eq("mes",mes).eq("tarefa",tarefa).execute()
+    d = {"mes":mes,"tarefa":tarefa,"status":status,"obs":obs,"atualizado_em":datetime.now().isoformat()}
+    if ex.data: supabase.table("checklist").update(d).eq("id",ex.data[0]["id"]).execute()
+    else:        supabase.table("checklist").insert(d).execute()
 
-# ══ MARGEM REVERSA ══════════════════════════
-elif pagina=="🔄 Margem Reversa":
-    titulo("🔄 Margem Reversa")
-    t1,t2 = st.tabs(["💬 Qual minha margem se cobrar R$X?","🎯 Quanto cobrar para ter X% de margem?"])
-    skus,mods,_ = get_opcoes()
-    with t1:
-        st.info("Informe o preço que o cliente quer pagar e veja sua margem real.")
-        c1,c2 = st.columns(2)
-        with c1:
-            m1 = st.selectbox("Modelo",mods,key="mr_m")
-            ts1 = sorted(set(s['tecido'] for s in skus if s['modelo']==m1))
-            t1_ = st.selectbox("Tecido",ts1,key="mr_t")
-        with c2:
-            cr1 = cores(skus,m1,t1_)
-            c1_ = st.selectbox("Cor",cr1,key="mr_c") if cr1 else None
-            tm1 = tams(skus,m1,t1_,c1_) if c1_ else []
-            tm1_ = st.selectbox("Tamanho",tm1,key="mr_tam") if tm1 else None
-        preco_cli = st.number_input("Preço que o cliente quer pagar (R$)",0.01,value=12.0,step=0.5)
-        if c1_ and tm1_:
-            calc = calcular_sku_completo(m1,t1_,c1_,tm1_)
-            if calc:
-                custo = calc['custo_final']
-                lucro = round(preco_cli-custo,2)
-                margem = round(lucro/preco_cli*100,1) if preco_cli else 0
-                markup = round(lucro/custo*100,1) if custo else 0
-                st.markdown("---")
-                p1,p2,p3,p4 = st.columns(4)
-                p1.markdown(cc("Custo Final",custo),unsafe_allow_html=True)
-                p2.markdown(cc("Preço Cobrado",preco_cli),unsafe_allow_html=True)
-                p3.markdown(cv("Lucro/Peça",lucro) if lucro>=0 else ca("⚠️ PREJUÍZO",lucro),unsafe_allow_html=True)
-                p4.metric("Margem Real",f"{margem:.1f}%",delta=f"Markup: {markup:.1f}%")
-                st.markdown("---")
-                sec("Comparação com suas faixas padrão")
-                dc = {'Faixa':['Super Revenda +20%','Atacado +35%','Varejo +50%','Preço do cliente'],
-                      'Preço':[calc['super_revenda'],calc['atacado'],calc['varejo'],preco_cli],
-                      'Lucro':[round(calc['super_revenda']-custo,2),round(calc['atacado']-custo,2),round(calc['varejo']-custo,2),lucro],
-                      'Margem %':[round((calc['super_revenda']-custo)/calc['super_revenda']*100,1),
-                                  round((calc['atacado']-custo)/calc['atacado']*100,1),
-                                  round((calc['varejo']-custo)/calc['varejo']*100,1),margem]}
-                st.dataframe(pd.DataFrame(dc),use_container_width=True,hide_index=True)
-                if lucro<0: st.error(f"⚠️ Abaixo do custo! Mínimo sem prejuízo: {fmt(custo)}")
-                elif margem<10: st.warning(f"⚠️ Margem muito baixa ({margem:.1f}%). SR padrão é 20%.")
-                else: st.success(f"✅ Margem de {margem:.1f}% — dentro do esperado.")
-    with t2:
-        st.info("Arraste o slider e veja qual preço cobrar para atingir a margem desejada.")
-        c1,c2 = st.columns(2)
-        with c1:
-            m2 = st.selectbox("Modelo",mods,key="mr2_m")
-            ts2 = sorted(set(s['tecido'] for s in skus if s['modelo']==m2))
-            t2_ = st.selectbox("Tecido",ts2,key="mr2_t")
-        with c2:
-            cr2 = cores(skus,m2,t2_)
-            c2_ = st.selectbox("Cor",cr2,key="mr2_c") if cr2 else None
-            tm2 = tams(skus,m2,t2_,c2_) if c2_ else []
-            tm2_ = st.selectbox("Tamanho",tm2,key="mr2_tam") if tm2 else None
-        mg_des = st.slider("Margem desejada (%)",5,100,20,1)
-        if c2_ and tm2_:
-            calc2 = calcular_sku_completo(m2,t2_,c2_,tm2_)
-            if calc2:
-                custo2 = calc2['custo_final']
-                pnec = round(custo2/(1-mg_des/100),2)
-                luc2 = round(pnec-custo2,2)
-                st.markdown("---")
-                p1,p2,p3,p4 = st.columns(4)
-                p1.markdown(cc("Custo Final",custo2),unsafe_allow_html=True)
-                p2.markdown(cv(f"Preço para {mg_des}% de margem",pnec),unsafe_allow_html=True)
-                p3.markdown(cv("Lucro/Peça",luc2),unsafe_allow_html=True)
-                p4.metric("Markup equivalente",f"{round(luc2/custo2*100,1):.1f}%")
-                margens = list(range(5,65,5))
-                precos = [round(custo2/(1-m_/100),2) for m_ in margens]
-                fig = px.line(pd.DataFrame({'Margem (%)':margens,'Preço (R$)':precos}),
-                              x='Margem (%)',y='Preço (R$)',markers=True,
-                              color_discrete_sequence=['#00c04b'])
-                fig.add_vline(x=mg_des,line_dash="dash",line_color="#ff6b1a",
-                              annotation_text=f"  {mg_des}%",annotation_font_color="#ff6b1a")
-                fig.update_layout(**CHART)
-                fig.update_xaxes(gridcolor='#1a2535'); fig.update_yaxes(gridcolor='#1a2535')
-                st.plotly_chart(fig,use_container_width=True)
+def get_ap(mes):
+    r = supabase.table("apuracao").select("*").eq("mes",mes).execute()
+    return r.data[0] if r.data else {}
 
-# ══ LOTE ════════════════════════════════════
-elif pagina=="📦 Simulador de Lote":
-    titulo("📦 Simulador de Lote — Kg → Peças")
-    st.info("Informe quantos kg vai comprar e veja quantas peças saem, o custo e o lucro.")
-    skus,mods,_ = get_opcoes()
-    if not skus: st.warning("Nenhum SKU cadastrado.")
-    else:
-        if 'll' not in st.session_state: st.session_state.ll = [{}]
-        st.button("➕ Adicionar linha", on_click=lambda: st.session_state.ll.append({}))
-        inputs = []
-        for idx in range(len(st.session_state.ll)):
-            c1,c2,c3,c4,c5,c6 = st.columns([2,2,2,2,2,1])
-            tec = c1.selectbox("Tecido",sorted(set(s['tecido'] for s in skus)),key=f"lt_t{idx}")
-            mod = c2.selectbox("Modelo",sorted(set(s['modelo'] for s in skus if s['tecido']==tec)),key=f"lt_m{idx}")
-            cr = cores(skus,mod,tec); co = c3.selectbox("Cor",cr,key=f"lt_c{idx}") if cr else None
-            tm = tams(skus,mod,tec,co) if co else []; ta__ = c4.selectbox("Tamanho",tm,key=f"lt_ta{idx}") if tm else None
-            kg = c5.number_input("Kg",0.1,value=10.0,step=0.5,key=f"lt_k{idx}")
-            if c6.button("✖",key=f"lt_r{idx}"): st.session_state.ll.pop(idx); st.rerun()
-            if tec and mod and co and ta__: inputs.append((tec,co,mod,ta__,kg))
-        if st.button("🧮 Calcular Lote") and inputs:
-            res = []
-            for tec,co,mod,ta__,kg in inputs:
-                r = calcular_lote(tec,co,mod,ta__,kg)
-                if r: res.append(r)
-                else: st.warning(f"SKU não encontrado: {mod} {tec} {co} {ta__}")
-            if res:
-                st.markdown("---")
-                df = pd.DataFrame(res); ds = df.copy()
-                for col in ['custo_tecido_lote','custo_final_peca','custo_total_lote','faturamento_sr','lucro']:
-                    ds[col] = ds[col].apply(fmt)
-                ds['markup_pct'] = ds['markup_pct'].apply(fpct)
-                ds['margem_pct'] = ds['margem_pct'].apply(fpct)
-                ds.columns = ['Descrição','Kg','Peso/g','Qtd','C.Tecido','C/Peça','C.Total','Fat.SR','Lucro','Markup%','Margem%']
-                st.dataframe(ds,use_container_width=True,hide_index=True)
-                st.markdown("---")
-                tkg=sum(r['kg'] for r in res); tpcs=sum(r['qtd_pecas'] for r in res)
-                tct=sum(r['custo_total_lote'] for r in res); tft=sum(r['faturamento_sr'] for r in res)
-                tlc=sum(r['lucro'] for r in res); mgr=tlc/tft if tft else 0
-                c1,c2,c3,c4,c5,c6 = st.columns(6)
-                c1.metric("Total Kg",f"{tkg:.1f}kg"); c2.metric("Total Peças",tpcs)
-                c3.metric("Custo Total",fmt(tct)); c4.metric("Faturamento SR",fmt(tft))
-                c5.metric("Lucro Total",fmt(tlc)); c6.metric("Margem Real",fpct(mgr))
+def salvar_ap(mes, d):
+    ex = supabase.table("apuracao").select("id").eq("mes",mes).execute()
+    d["mes"]=mes; d["atualizado_em"]=datetime.now().isoformat()
+    if ex.data: supabase.table("apuracao").update(d).eq("id",ex.data[0]["id"]).execute()
+    else:        supabase.table("apuracao").insert(d).execute()
 
-# ══ TABELA CLIENTE ════════════════════════════
-elif pagina=="📤 Tabela para Cliente":
-    titulo("📤 Tabela de Preços para Cliente")
-    cat = catalogo_cache()
-    if not cat: st.warning("Nenhum SKU cadastrado.")
-    else:
-        df = pd.DataFrame(cat)
-        c1,c2,c3 = st.columns(3)
-        mf = c1.selectbox("Modelo",['Todos']+sorted(df['Modelo'].unique()))
-        tf = c2.selectbox("Tecido",['Todos']+sorted(df['Tecido'].unique()))
-        dff = df.copy()
-        if mf!='Todos': dff = dff[dff['Modelo']==mf]
-        if tf!='Todos': dff = dff[dff['Tecido']==tf]
-        cf = c3.selectbox("Cor",['Todas']+sorted(dff['Cor'].unique()))
-        if cf!='Todas': dff = dff[dff['Cor']==cf]
-        fx = st.radio("Faixa de Preço para o Cliente:",["Super Revenda","Atacado","Varejo","Todas as Faixas"],horizontal=True)
+def get_metas(mes):
+    r = supabase.table("metas").select("*").eq("mes",mes).execute()
+    return r.data[0] if r.data else {}
 
-        # Monta tabela SEM custo — cliente nunca vê o custo!
-        ds = dff.copy()
-        if fx=="Todas as Faixas":
-            for c in ['Super Revenda','Atacado','Varejo']: ds[c]=ds[c].apply(fmt)
-            cols = ['Modelo','Cor','Tecido','Tamanho','Super Revenda','Atacado','Varejo']
-        else:
-            ds['Preço'] = ds[fx].apply(fmt)
-            cols = ['Modelo','Cor','Tecido','Tamanho','Preço']
+def salvar_metas(mes, d):
+    ex = supabase.table("metas").select("id").eq("mes",mes).execute()
+    d["mes"]=mes
+    if ex.data: supabase.table("metas").update(d).eq("id",ex.data[0]["id"]).execute()
+    else:        supabase.table("metas").insert(d).execute()
 
-        st.caption(f"{len(ds)} produtos — Faixa: **{fx}**")
-        st.dataframe(ds[cols],use_container_width=True,hide_index=True)
-        st.markdown("---")
-        cp,cw,cc_ = st.columns(3)
-        with cp:
-            if st.button("📄 Gerar PDF para Cliente"):
-                from pdf_gerador import gerar_pdf_tabela_precos
-                # Passa apenas dados sem custo para o PDF
-                dados_pdf = []
-                for _,row in dff.iterrows():
-                    if fx=="Todas as Faixas":
-                        dados_pdf.append({
-                            'Modelo':row['Modelo'],'Tecido':row['Tecido'],
-                            'Cor':row['Cor'],'Tamanho':row['Tamanho'],
-                            'Super Revenda':row['Super Revenda'],
-                            'Atacado':row['Atacado'],'Varejo':row['Varejo'],
-                        })
-                    else:
-                        dados_pdf.append({
-                            'Modelo':row['Modelo'],'Tecido':row['Tecido'],
-                            'Cor':row['Cor'],'Tamanho':row['Tamanho'],
-                            'Faixa':fx,'Preço':row[fx],
-                        })
-                with st.spinner("Gerando PDF..."):
-                    pdf = gerar_pdf_tabela_precos(dados_pdf, f"Modelo: {mf} | Tecido: {tf} | Cor: {cf} | Faixa: {fx}")
-                st.download_button("⬇️ Baixar PDF",pdf,file_name=f"tabela_cliente_{date.today()}.pdf",mime="application/pdf")
-        with cw:
-            if st.button("📱 Texto WhatsApp"):
-                lns = ["*Tabela de Preços — Prates Sublimação* 🧵",""]
-                for _,row in dff.iterrows():
-                    if fx=="Todas as Faixas":
-                        lns.append(f"• {row['Modelo']} {row['Tecido']} {row['Cor']} ({row['Tamanho']}): SR {fmt(row['Super Revenda'])} | AT {fmt(row['Atacado'])} | VR {fmt(row['Varejo'])}")
-                    else:
-                        lns.append(f"• {row['Modelo']} {row['Tecido']} {row['Cor']} ({row['Tamanho']}): {fmt(row[fx])}")
-                lns += ["","Pix ou Dinheiro | Retirada local — Macaé/RJ 😊"]
-                st.text_area("Copie:","\n".join(lns),height=250)
-        with cc_:
-            # CSV também sem custo
-            csv_cols = ['Modelo','Cor','Tecido','Tamanho'] + (['Super Revenda','Atacado','Varejo'] if fx=="Todas as Faixas" else [fx])
-            if fx != "Todas as Faixas":
-                dff_csv = dff[['Modelo','Cor','Tecido','Tamanho',fx]].copy()
-                dff_csv.columns = ['Modelo','Cor','Tecido','Tamanho','Preço']
+def get_ir(mes):
+    r = supabase.table("igreja_retiradas").select("*").eq("mes",mes).execute()
+    return r.data[0] if r.data else {}
+
+def salvar_ir(mes, d):
+    ex = supabase.table("igreja_retiradas").select("id").eq("mes",mes).execute()
+    d["mes"]=mes
+    if ex.data: supabase.table("igreja_retiradas").update(d).eq("id",ex.data[0]["id"]).execute()
+    else:        supabase.table("igreja_retiradas").insert(d).execute()
+
+
+def get_tarefas_custom():
+    r = supabase.table("tarefas_custom").select("*").order("secao").order("id").execute()
+    return r.data if r.data else []
+
+def add_tarefa_custom(secao, descricao):
+    supabase.table("tarefas_custom").insert({"secao": secao, "descricao": descricao}).execute()
+
+def del_tarefa_custom(id_tarefa):
+    supabase.table("tarefas_custom").delete().eq("id", id_tarefa).execute()
+
+def get_meses():
+    r = supabase.table("apuracao").select("mes").execute()
+    return sorted(set(d["mes"] for d in r.data), reverse=True)
+
+# ── LOGIN ─────────────────────────────────────────────────────────────────────
+def tela_login():
+    logo = get_logo_b64()
+    logo_html = f'<img src="data:image/jpeg;base64,{logo}" width="90" style="border-radius:50%;margin-bottom:8px">' if logo else '<div style="font-size:42px">📋</div>'
+    st.markdown(f'<div style="text-align:center;padding-top:60px">{logo_html}<div style="font-size:22px;font-weight:700;color:#e2e8f0;margin:8px 0 4px">Fechamento Mensal</div><div style="font-size:13px;color:#6b7280;margin-bottom:32px">Grupo Prates · Macaé/RJ</div></div>', unsafe_allow_html=True)
+    col = st.columns([1,1.2,1])[1]
+    with col:
+        st.markdown('<div style="background:#16191f;border:1px solid #252932;border-radius:12px;padding:32px">', unsafe_allow_html=True)
+        u = st.text_input("👤 Usuário", placeholder="seu usuario")
+        s = st.text_input("🔒 Senha", type="password", placeholder="••••••••")
+        if st.button("Entrar", use_container_width=True):
+            if login_valido(u, s):
+                st.session_state.logado = True
+                st.session_state.usuario = u
+                st.rerun()
             else:
-                dff_csv = dff[['Modelo','Cor','Tecido','Tamanho','Super Revenda','Atacado','Varejo']].copy()
-            st.download_button("⬇️ CSV",dff_csv.to_csv(index=False).encode('utf-8-sig'),
-                               file_name=f"tabela_cliente_{date.today()}.csv",mime="text/csv")
+                st.error("Usuário ou senha incorretos.")
+        st.markdown('</div>', unsafe_allow_html=True)
 
-# ══ RELATÓRIO MENSAL ════════════════════════
-elif pagina=="📈 Relatório Mensal":
-    titulo("📈 Relatório Mensal")
-    ms = st.sidebar.text_input("Mês (AAAA-MM)",datetime.today().strftime('%Y-%m'))
-    tp,tr,ta = st.tabs(["📊 Painel","📋 Registros","➕ Novo Registro"])
-    with tp:
-        regs = get_relatorio_mensal(ms)
-        if not regs: st.info(f"Nenhum registro para {ms}.")
-        else:
-            df = pd.DataFrame(regs)
-            rec=df['receita'].sum(); cst=df['custo'].sum(); luc=df['lucro'].sum()
-            c1,c2,c3,c4,c5,c6 = st.columns(6)
-            c1.metric("Pedidos",len(df)); c2.metric("Peças",int(df['qtd_pecas'].sum()))
-            c3.metric("Receita",fmt(rec)); c4.metric("Custo",fmt(cst))
-            c5.metric("Lucro",fmt(luc)); c6.metric("Margem",fpct(luc/rec if rec else 0))
-            col1,col2 = st.columns(2)
-            with col1:
-                dm = df.groupby('modelo')['receita'].sum().reset_index()
-                fig = px.bar(dm,x='modelo',y='receita',color='modelo',
-                             color_discrete_sequence=['#00c04b','#ff6b1a','#3b82f6','#f6c90e'])
-                fig.update_layout(**CHART,title="Receita por Modelo",showlegend=False)
-                fig.update_xaxes(gridcolor='#1a2535'); fig.update_yaxes(gridcolor='#1a2535')
-                st.plotly_chart(fig,use_container_width=True)
-            with col2:
-                df2 = df.groupby('faixa')['receita'].sum().reset_index()
-                fig2 = px.pie(df2,names='faixa',values='receita',hole=0.4,
-                              color_discrete_sequence=['#00c04b','#ff6b1a','#3b82f6'])
-                fig2.update_layout(**CHART,title="Receita por Faixa")
-                st.plotly_chart(fig2,use_container_width=True)
-    with tr:
-        regs = get_relatorio_mensal(ms)
-        if not regs: st.info("Nenhum registro.")
-        else:
-            df = pd.DataFrame(regs)
-            st.dataframe(df[['data','numero_pedido','modelo','faixa','tecido','qtd_pecas','receita','custo','lucro','observacao']],
-                        use_container_width=True,hide_index=True)
-            rid = st.selectbox("Excluir ID:",df['id'].tolist())
-            if st.button("🗑️ Excluir"): delete_registro_mensal(rid); st.rerun()
-            st.download_button("⬇️ CSV",df.to_csv(index=False).encode('utf-8-sig'),
-                               file_name=f"rel_{ms}.csv",mime="text/csv")
-    with ta:
-        skus,mods,_ = get_opcoes()
-        c1,c2,c3 = st.columns(3)
-        dr=c1.date_input("Data",date.today()); nr=c2.text_input("Nº Pedido"); fx_r=c3.selectbox("Faixa",["Super Revenda","Atacado","Varejo"])
-        c4,c5,c6 = st.columns(3)
-        mr_=c4.selectbox("Modelo",mods); tr_=c5.text_input("Tecido"); qr=c6.number_input("Qtd",1,value=10)
-        c7,c8,c9 = st.columns(3)
-        cor_r=c7.text_input("Cor"); rr=c8.number_input("Receita (R$)",0.0,step=0.01); cr_=c9.number_input("Custo (R$)",0.0,step=0.01)
-        vr_=c1.text_input("Variante"); obs_r=st.text_area("Observação")
-        if st.button("💾 Salvar"):
-            add_registro_mensal(str(dr),nr,mr_,fx_r,vr_,tr_,qr,cor_r,rr,cr_,round(rr-cr_,2),obs_r)
-            st.success("✅ Salvo!"); st.rerun()
+# ── SIDEBAR ───────────────────────────────────────────────────────────────────
+def sidebar():
+    with st.sidebar:
+        logo = get_logo_b64()
+        if logo:
+            st.markdown(f'<div style="text-align:center;padding:16px 8px 4px"><img src="data:image/jpeg;base64,{logo}" width="80" style="border-radius:50%"></div>', unsafe_allow_html=True)
+        st.markdown('<div style="text-align:center;padding:4px 8px 8px"><div style="font-size:14px;font-weight:700;color:#e2e8f0;margin:4px 0 2px">Fechamento Mensal</div><div style="font-size:11px;color:#6b7280">Grupo Prates</div></div>', unsafe_allow_html=True)
+        st.markdown('<hr style="border-color:#252932;margin:10px 0">', unsafe_allow_html=True)
+        mes = st.text_input("📅 Mês de referência", value=datetime.today().strftime('%Y-%m'), key="mes_ref")
+        st.markdown('<hr style="border-color:#252932;margin:10px 0">', unsafe_allow_html=True)
+        if "pagina" not in st.session_state: st.session_state.pagina = "📋 Checklist"
+        for item in ["📋 Checklist","💰 Apuração Financeira","🎯 Metas","⛪ Igreja & Retiradas","📊 Histórico","📱 Resumo WhatsApp"]:
+            if st.button(item, key=f"nav_{item}", use_container_width=True):
+                st.session_state.pagina = item; st.rerun()
+        st.markdown('<hr style="border-color:#252932;margin:10px 0">', unsafe_allow_html=True)
+        st.markdown(f'<p style="color:#3a4050;font-size:11px;text-align:center">👤 {st.session_state.get("usuario","")}</p>', unsafe_allow_html=True)
+        if st.button("🚪 Sair", use_container_width=True):
+            st.session_state.logado = False; st.rerun()
+        st.markdown('<p style="text-align:center;color:#3a4050;font-size:10px;margin-top:8px">Grupo Prates · v3.0</p>', unsafe_allow_html=True)
+        return mes
 
-# ══ CONFIGURAÇÕES ════════════════════════════
-elif pagina=="⚙️ Configurações":
-    titulo("⚙️ Configurações")
-    tp,tf,tfa,ts = st.tabs(["🎛️ Parâmetros","🏭 Fornecedores","✂️ Faccionistas","📦 SKUs"])
-    with tp:
-        st.info("Altere aqui → todos os SKUs recalculam automaticamente.")
-        p = get_parametros()
-        c1,c2 = st.columns(2)
-        with c1:
-            fr=st.number_input("Frete (%)",0.0,1.0,float(p.get('frete_pct',0.05)),0.01,format="%.2f")
-            ou=st.number_input("Outros Custos (%)",0.0,1.0,float(p.get('outros_pct',0.03)),0.01,format="%.2f")
-            em=st.number_input("Embalagem/peça (R$)",0.0,value=float(p.get('embalagem',0.0)),step=0.5)
-        with c2:
-            ms_=st.number_input("Margem Super Revenda (%)",0.0,5.0,float(p.get('margem_sr',0.20)),0.01,format="%.2f")
-            ma_=st.number_input("Margem Atacado (%)",0.0,5.0,float(p.get('margem_atacado',0.35)),0.01,format="%.2f")
-            mv_=st.number_input("Margem Varejo (%)",0.0,5.0,float(p.get('margem_varejo',0.50)),0.01,format="%.2f")
-        if st.button("💾 Salvar Parâmetros"):
-            for k,v in [('frete_pct',fr),('outros_pct',ou),('embalagem',em),('margem_sr',ms_),('margem_atacado',ma_),('margem_varejo',mv_)]:
-                set_parametro(k,v)
-            catalogo_cache.clear()
-            st.success("✅ Parâmetros salvos! Todos os preços foram atualizados."); st.rerun()
-    with tf:
-        st.info("Atualize o preço/kg. O Fornecedor Ativo é usado em todos os cálculos.")
-        for fo in get_fornecedores():
-            with st.expander(f"🧵 {fo['tecido']} — {fo['cor']}   |   Ativo: {fo['fornecedor_ativo']}   |   {fmt(get_preco_kg(fo['tecido'],fo['cor']))}/kg"):
-                c1,c2,c3,c4 = st.columns(4)
-                f1n=c1.text_input("Fornecedor 1",fo['f1_nome'],key=f"f1n{fo['id']}")
-                f1p=c2.number_input("Preço F1",0.0,value=float(fo['f1_preco']),step=0.1,key=f"f1p{fo['id']}")
-                f2n=c3.text_input("Fornecedor 2",fo['f2_nome'],key=f"f2n{fo['id']}")
-                f2p=c4.number_input("Preço F2",0.0,value=float(fo['f2_preco']),step=0.1,key=f"f2p{fo['id']}")
-                c5,c6,c7 = st.columns(3)
-                f3n=c5.text_input("Fornecedor 3",fo['f3_nome'],key=f"f3n{fo['id']}")
-                f3p=c6.number_input("Preço F3",0.0,value=float(fo['f3_preco']),step=0.1,key=f"f3p{fo['id']}")
-                op=['Mais Barato',f1n,f2n,f3n]; ix=op.index(fo['fornecedor_ativo']) if fo['fornecedor_ativo'] in op else 0
-                fa_=c7.selectbox("Ativo",op,index=ix,key=f"fa{fo['id']}")
-                if st.button("💾 Salvar",key=f"sf{fo['id']}"):
-                    ant=get_preco_kg(fo['tecido'],fo['cor'])
-                    update_fornecedor(fo['id'],{'f1_nome':f1n,'f1_preco':f1p,'f2_nome':f2n,'f2_preco':f2p,'f3_nome':f3n,'f3_preco':f3p,'fornecedor_ativo':fa_})
-                    novo=get_preco_kg(fo['tecido'],fo['cor'])
-                    if abs(novo-ant)>0.001: add_historico('Tecido',f"{fo['tecido']} | {fo['cor']}",ant,novo,fa_,'')
-                    catalogo_cache.clear()
-                    st.success("✅ Atualizado!"); st.rerun()
-        st.markdown("---")
-        st.markdown("**➕ Novo Tecido/Cor**")
-        c1,c2,c3 = st.columns(3)
-        nt=c1.text_input("Tecido",key="nt"); nc=c2.text_input("Cor",key="nc"); np_=c3.number_input("Preço F1 (R$/kg)",0.0,step=0.1,key="np")
-        if st.button("➕ Adicionar") and nt and nc:
-            ok=add_fornecedor(nt,nc,'Fornecedor 1',np_)
-            st.success("✅ Adicionado!") if ok else st.error("❌ Já existe.")
-            st.rerun()
-    with tfa:
-        for f in get_faccionistas():
-            with st.expander(f"✂️ {f['modelo']}   |   Ativa: {f['faccionista_ativa']}   |   {fmt(get_preco_costura(f['modelo']))}/peça"):
-                c1,c2,c3,c4 = st.columns(4)
-                fn1=c1.text_input("Faccionista 1",f['f1_nome'],key=f"fn1{f['id']}")
-                fp1=c2.number_input("Preço F1",0.0,value=float(f['f1_preco']),step=0.1,key=f"fp1{f['id']}")
-                fn2=c3.text_input("Faccionista 2",f['f2_nome'],key=f"fn2{f['id']}")
-                fp2=c4.number_input("Preço F2",0.0,value=float(f['f2_preco']),step=0.1,key=f"fp2{f['id']}")
-                c5,c6,c7 = st.columns(3)
-                fn3=c5.text_input("Faccionista 3",f['f3_nome'],key=f"fn3{f['id']}")
-                fp3=c6.number_input("Preço F3",0.0,value=float(f['f3_preco']),step=0.1,key=f"fp3{f['id']}")
-                op=['Mais Barata',fn1,fn2,fn3]; ix=op.index(f['faccionista_ativa']) if f['faccionista_ativa'] in op else 0
-                faa=c7.selectbox("Ativa",op,index=ix,key=f"faa{f['id']}")
-                if st.button("💾 Salvar",key=f"sfac{f['id']}"):
-                    ant=get_preco_costura(f['modelo'])
-                    update_faccionista(f['id'],{'f1_nome':fn1,'f1_preco':fp1,'f2_nome':fn2,'f2_preco':fp2,'f3_nome':fn3,'f3_preco':fp3,'faccionista_ativa':faa})
-                    novo=get_preco_costura(f['modelo'])
-                    if abs(novo-ant)>0.001: add_historico('Costura',f['modelo'],ant,novo,faa,'')
-                    catalogo_cache.clear()
-                    st.success("✅ Atualizado!"); st.rerun()
-    with ts:
-        sk = get_skus()
-        st.dataframe(pd.DataFrame(sk)[['id','modelo','tecido','cor','tamanho','peso_g']],
-                    use_container_width=True,hide_index=True)
-        st.caption(f"Total: {len(sk)} SKUs")
-        st.markdown("---")
-        st.markdown("**➕ Adicionar / Atualizar SKU**")
-        c1,c2,c3,c4,c5 = st.columns(5)
-        ms2=c1.text_input("Modelo","Adulto"); ts2=c2.text_input("Tecido","PP")
-        cs2=c3.text_input("Cor"); tms2=c4.selectbox("Tamanho",["P-GG","XGG","1-14"])
-        ps2=c5.number_input("Peso (g)",1.0,value=235.0,step=5.0)
-        if st.button("💾 Salvar SKU"):
-            upsert_sku(ms2,ts2,cs2,tms2,ps2)
-            catalogo_cache.clear()
-            st.success("✅ SKU salvo!"); st.rerun()
-
-# ══ HISTÓRICO ════════════════════════════════
-elif pagina=="📋 Histórico de Preços":
-    titulo("📋 Histórico de Preços")
-    tv,ta = st.tabs(["📋 Ver","➕ Registrar"])
-    with tv:
-        h = get_historico()
-        if not h: st.info("Nenhum registro. O sistema registra automaticamente ao salvar em Configurações.")
-        else:
-            dh = pd.DataFrame(h)
-            dh['variacao_pct'] = dh['variacao_pct'].apply(fpct)
-            st.dataframe(dh[['data','tipo','tecido_modelo','preco_anterior','preco_novo',
-                             'variacao_pct','fornecedor_faccionista','motivo']],
-                        use_container_width=True,hide_index=True)
-            st.download_button("⬇️ CSV",dh.to_csv(index=False).encode('utf-8-sig'),
-                               file_name=f"historico_{date.today()}.csv",mime="text/csv")
-    with ta:
-        c1,c2 = st.columns(2)
-        th=c1.selectbox("Tipo",["Tecido","Costura"]); tmh=c2.text_input("Tecido/Modelo")
-        c3,c4,c5 = st.columns(3)
-        ph1=c3.number_input("Preço Anterior",0.0,step=0.01)
-        ph2=c4.number_input("Preço Novo",0.0,step=0.01)
-        fh=c5.text_input("Fornecedor/Faccionista")
-        mh=st.text_input("Motivo")
-        if st.button("💾 Registrar") and tmh and ph2:
-            add_historico(th,tmh,ph1,ph2,fh,mh); st.success("✅ Registrado!"); st.rerun()
-
-# ══ IMPORTAR ════════════════════════════════
-elif pagina=="📥 Importar Planilha":
-    titulo("📥 Importar Planilha Excel")
-    st.info("Faça upload do .xlsx para importar SKUs, fornecedores, faccionistas e parâmetros.")
-    arq = st.file_uploader("Selecione o arquivo .xlsx",type=['xlsx'])
-    if arq:
-        import tempfile, os as _os
-        with tempfile.NamedTemporaryFile(delete=False,suffix='.xlsx') as tmp:
-            tmp.write(arq.read()); tp=tmp.name
-        if st.button("🚀 Importar"):
-            from importador import importar_xlsx
-            with st.spinner("Importando..."): res=importar_xlsx(tp)
-            if 'erro' in res: st.error(f"❌ Erro: {res['erro']}")
-            else:
-                catalogo_cache.clear()
-                st.success(f"✅ SKUs: {res['skus']} | Fornecedores: {res['fornecedores']} | Parâmetros: {res['parametros']}")
-            _os.unlink(tp)
-    st.markdown("---")
+# ── CHECKLIST ─────────────────────────────────────────────────────────────────
+def pagina_checklist(mes):
+    titulo(f"📋 Checklist — Fechamento {mes}")
+    dados = get_checklist(mes)
+    conc = sum(1 for d in dados.values() if d.get("status")=="✅ Concluído")
+    na   = sum(1 for d in dados.values() if d.get("status")=="⊘ N/A")
+    pend = TOTAL_TAREFAS - conc - na
+    ef   = TOTAL_TAREFAS - na
+    pct  = int(conc/ef*100) if ef>0 else 0
     c1,c2,c3,c4 = st.columns(4)
-    c1.metric("SKUs",len(get_skus())); c2.metric("Fornecedores",len(get_fornecedores()))
-    c3.metric("Faccionistas",len(get_faccionistas())); c4.metric("Histórico",len(get_historico()))
+    c1.metric("Total",TOTAL_TAREFAS); c2.metric("✅ Concluídas",conc)
+    c3.metric("☐ Pendentes",pend);    c4.metric("Progresso",f"{pct}%")
+    cor = "#22c55e" if pct==100 else "#2d7a4f" if pct>=50 else "#d97706"
+    st.markdown(f'<div style="background:#252932;border-radius:6px;height:10px;margin:8px 0 20px"><div style="background:{cor};width:{pct}%;height:10px;border-radius:6px"></div></div>', unsafe_allow_html=True)
+    if pct==100: st.success("🎉 Fechamento 100% concluído! Glória a Deus!")
+    tarefas_custom = get_tarefas_custom()
+    custom_por_secao = {}
+    for tc in tarefas_custom:
+        custom_por_secao.setdefault(tc["secao"], []).append(tc)
+
+    todas_secoes = list(dict.fromkeys([s for s,_ in TAREFAS] + list(custom_por_secao.keys())))
+
+    for secao in todas_secoes:
+        sec(secao)
+        tarefas_fixas = dict(TAREFAS).get(secao, [])
+        tarefas_desta_secao = list(tarefas_fixas) + [t["descricao"] for t in custom_por_secao.get(secao, [])]
+        ids_custom = {t["descricao"]: t["id"] for t in custom_por_secao.get(secao, [])}
+
+        for tarefa in tarefas_desta_secao:
+            d = dados.get(tarefa,{})
+            st_at = d.get("status","☐ Pendente")
+            ob_at = d.get("obs","")
+            is_custom = tarefa in ids_custom
+            label = f"{st_at[:2]}  {tarefa}" + (" 🔧" if is_custom else "")
+            with st.expander(label):
+                c1,c2 = st.columns([2,3])
+                ns = c1.selectbox("Status",STATUS_OPTS, index=STATUS_OPTS.index(st_at) if st_at in STATUS_OPTS else 0, key=f"st_{mes}_{tarefa}")
+                no = c2.text_input("Observação", value=ob_at, key=f"ob_{mes}_{tarefa}")
+                col_s, col_d = st.columns([3,1])
+                if col_s.button("💾 Salvar", key=f"sv_{mes}_{tarefa}"):
+                    salvar_tarefa(mes, tarefa, ns, no); st.success("Salvo!"); st.rerun()
+                if is_custom:
+                    if col_d.button("🗑️ Excluir", key=f"del_{tarefa}"):
+                        del_tarefa_custom(ids_custom[tarefa]); st.success("Tarefa excluída!"); st.rerun()
+
+    st.markdown('<hr style="border-color:#252932;margin:20px 0">', unsafe_allow_html=True)
+    sec("➕ Adicionar Nova Tarefa Personalizada")
+    secoes_disponiveis = [s for s,_ in TAREFAS] + ["NOVA SEÇÃO PERSONALIZADA"]
+    c1,c2,c3 = st.columns([2,3,1])
+    secao_nova = c1.selectbox("Seção", secoes_disponiveis, key="nova_secao")
+    if secao_nova == "NOVA SEÇÃO PERSONALIZADA":
+        secao_nova = c1.text_input("Nome da nova seção", key="nome_nova_secao")
+    desc_nova = c2.text_input("Descrição da tarefa", key="nova_tarefa_desc")
+    if c3.button("➕ Adicionar", key="btn_add_tarefa"):
+        if desc_nova and secao_nova:
+            add_tarefa_custom(secao_nova, desc_nova)
+            st.success(f"Tarefa adicionada!"); st.rerun()
+        else:
+            st.warning("Preencha a seção e a descrição.")
+
+# ── APURAÇÃO ──────────────────────────────────────────────────────────────────
+def ni(label, key, ap):
+    return st.number_input(label, value=float(ap.get(key) or 0), step=0.01, format="%.2f", key=key)
+
+def bloco(ap, px, nome):
+    sec(f"Resultado Principal — {nome}")
+    c1,c2 = st.columns(2)
+    lb = c1.number_input(f"Lucro Bruto (R$)", value=float(ap.get(f"{px}_lb") or 0), step=0.01, format="%.2f", key=f"{px}_lb")
+    de = c1.number_input(f"Despesa (R$)",     value=float(ap.get(f"{px}_de") or 0), step=0.01, format="%.2f", key=f"{px}_de")
+    res = lb - de
+    diz = res*0.10 if res>0 else 0
+    c2.metric("Resultado (=)", fmt(res))
+    c2.metric("Dízimo 10% automático", fmt(diz))
+    if diz>0: sug(f"Distribuição do Dízimo sugerida → 70% direto à Igreja = {fmt(diz*0.7)}  |  30% para Social + Missão = {fmt(diz*0.3)}")
+    c3,c4,c5 = st.columns(3)
+    of = c3.number_input("Oferta (R$)",  value=float(ap.get(f"{px}_oferta") or 0), step=0.01, format="%.2f", key=f"{px}_oferta")
+    so = c4.number_input("Social (R$)",  value=float(ap.get(f"{px}_social") or 0), step=0.01, format="%.2f", key=f"{px}_social")
+    if diz>0: sug(f"Sugestão para Social (20% do dízimo) → {fmt(diz*0.2)}")
+    mi = c5.number_input("Missão (R$)",  value=float(ap.get(f"{px}_missao") or 0), step=0.01, format="%.2f", key=f"{px}_missao")
+    if diz>0: sug(f"Sugestão para Missão (10% do dízimo) → {fmt(diz*0.1)}")
+    dp = st.number_input("Despesa Pessoal (R$)", value=float(ap.get(f"{px}_desp_pes") or 0), step=0.01, format="%.2f", key=f"{px}_desp_pes")
+    tc = diz+of+so+mi
+    ll_p = res - tc - dp
+
+    st.markdown('<hr style="border-color:#252932;margin:10px 0">', unsafe_allow_html=True)
+    sec(f"Sobras e Faltas — {nome}")
+    c1,c2 = st.columns(2)
+    lb2 = c1.number_input("Lucro Bruto S&F (R$)", value=float(ap.get(f"{px}_sf_lb") or 0), step=0.01, format="%.2f", key=f"{px}_sf_lb")
+    de2 = c1.number_input("Despesa S&F (R$)",     value=float(ap.get(f"{px}_sf_de") or 0), step=0.01, format="%.2f", key=f"{px}_sf_de")
+    res2 = lb2-de2; diz2 = res2*0.10 if res2>0 else 0
+    c2.metric("Resultado S&F (=)", fmt(res2))
+    c2.metric("Dízimo S&F 10%", fmt(diz2))
+    if diz2>0: sug(f"Distribuição do Dízimo S&F sugerida → 70% direto à Igreja = {fmt(diz2*0.7)}  |  30% para Social + Missão = {fmt(diz2*0.3)}")
+    c3,c4,c5 = st.columns(3)
+    of2 = c3.number_input("Oferta S&F (R$)", value=float(ap.get(f"{px}_sf_oferta") or 0), step=0.01, format="%.2f", key=f"{px}_sf_oferta")
+    so2 = c4.number_input("Social S&F (R$)", value=float(ap.get(f"{px}_sf_social") or 0), step=0.01, format="%.2f", key=f"{px}_sf_social")
+    mi2 = c5.number_input("Missão S&F (R$)", value=float(ap.get(f"{px}_sf_missao") or 0), step=0.01, format="%.2f", key=f"{px}_sf_missao")
+    tc2 = diz2+of2+so2+mi2
+    ll_sf = res2-tc2
+    total = ll_p+ll_sf
+    tc_tot = tc+tc2
+    st.markdown('<hr style="border-color:#252932;margin:10px 0">', unsafe_allow_html=True)
+    cx1,cx2,cx3 = st.columns(3)
+    cx1.metric("Total Contrib. Igreja", fmt(tc_tot))
+    cx2.metric("LL Principal", fmt(ll_p))
+    cx3.metric(f"💚 LL {nome.upper()} TOTAL", fmt(total))
+    return {f"{px}_lb":lb,f"{px}_de":de,f"{px}_dizimo":diz,f"{px}_oferta":of,f"{px}_social":so,f"{px}_missao":mi,
+            f"{px}_desp_pes":dp,f"{px}_ll_p":ll_p,f"{px}_sf_lb":lb2,f"{px}_sf_de":de2,
+            f"{px}_sf_dizimo":diz2,f"{px}_sf_oferta":of2,f"{px}_sf_social":so2,f"{px}_sf_missao":mi2,
+            f"{px}_ll_sf":ll_sf,f"{px}_total":total,f"{px}_contrib_total":tc_tot}
+
+def pagina_apuracao(mes):
+    titulo(f"💰 Apuração Financeira — {mes}")
+    ap = get_ap(mes)
+    t1,t2,t3 = st.tabs(["⚡ Prates Eletrônico","🎨 Prates Sublimação","📊 Consolidado"])
+    with t1: de = bloco(ap,"e","Prates Eletrônico")
+    with t2: ds = bloco(ap,"s","Prates Sublimação")
+    with t3:
+        sec("CONSOLIDADO DO GRUPO PRATES")
+        ll_e=de.get("e_total",0); ll_s=ds.get("s_total",0)
+        tg=ll_e+ll_s; tc=de.get("e_contrib_total",0)+ds.get("s_contrib_total",0)
+        c1,c2,c3,c4 = st.columns(4)
+        c1.metric("LL Eletrônico",fmt(ll_e)); c2.metric("LL Sublimação",fmt(ll_s))
+        c3.metric("Total Igreja",fmt(tc));    c4.metric("🏆 LL TOTAL GRUPO",fmt(tg))
+    st.markdown('<hr style="border-color:#252932;margin:16px 0">', unsafe_allow_html=True)
+    if st.button("💾 Salvar Apuração Completa"):
+        salvar_ap(mes, {**de,**ds,"total_grupo":tg,"total_contrib":tc})
+        st.success(f"Apuração de {mes} salva!"); st.rerun()
+
+# ── METAS ─────────────────────────────────────────────────────────────────────
+def pagina_metas(mes):
+    titulo(f"🎯 Metas — {mes}")
+    ap=get_ap(mes); mt=get_metas(mes)
+    st.info("Defina as metas. O realizado é puxado automaticamente da Apuração.")
+    indicadores = [
+        ("LL Eletrônico — Principal","e_ll_p","meta_e_ll_p"),
+        ("LL Eletrônico — S&F","e_ll_sf","meta_e_ll_sf"),
+        ("Total Eletrônico","e_total","meta_e_total"),
+        ("LL Sublimação — Principal","s_ll_p","meta_s_ll_p"),
+        ("LL Sublimação — S&F","s_ll_sf","meta_s_ll_sf"),
+        ("Total Sublimação","s_total","meta_s_total"),
+        ("LL Total do Grupo","total_grupo","meta_total"),
+        ("Total Contribuições Igreja","total_contrib","meta_contrib"),
+    ]
+    novos={}
+    for label,ak,mk in indicadores:
+        real=nv(ap.get(ak)); meta=float(mt.get(mk) or 0); dif=real-meta
+        st_ic = "✅" if real>=meta and meta>0 else ("⚠️" if real>=meta*0.9 and meta>0 else ("❌" if meta>0 else "🎯"))
+        with st.expander(f"{st_ic}  {label}"):
+            c1,c2,c3,c4=st.columns(4)
+            nm=c1.number_input("Meta (R$)",value=meta,step=0.01,format="%.2f",key=mk)
+            c2.metric("Realizado",fmt(real)); c3.metric("Diferença",fmt(dif))
+            c4.metric("Status","✅ Meta Atingida" if real>=meta and meta>0 else ("⚠️ Quase" if real>=meta*0.9 and meta>0 else ("❌ Abaixo" if meta>0 else "—")))
+            novos[mk]=nm
+    if st.button("💾 Salvar Metas"):
+        salvar_metas(mes,novos); st.success("Metas salvas!"); st.rerun()
+
+# ── IGREJA & RETIRADAS ────────────────────────────────────────────────────────
+def pagina_igreja(mes):
+    titulo(f"⛪ Igreja & Retiradas — {mes}")
+    ir=get_ir(mes); ap=get_ap(mes)
+    t1,t2=st.tabs(["⛪ Contribuições à Igreja","💼 Retiradas Pessoais"])
+    with t1:
+        st.info("Registre os valores enviados à Igreja neste mês.")
+        c1,c2,c3=st.columns(3)
+        diz_e =c1.number_input("Dízimo Eletrônico (R$)",value=float(ir.get("diz_e") or nv(ap.get("e_dizimo"))+nv(ap.get("e_sf_dizimo"))),step=0.01,format="%.2f",key="ir_diz_e")
+        diz_s =c2.number_input("Dízimo Sublimação (R$)",value=float(ir.get("diz_s") or nv(ap.get("s_dizimo"))+nv(ap.get("s_sf_dizimo"))),step=0.01,format="%.2f",key="ir_diz_s")
+        oferta=c3.number_input("Oferta (R$)",value=float(ir.get("oferta") or 0),step=0.01,format="%.2f",key="ir_oferta")
+        c4,c5=st.columns(2)
+        social=c4.number_input("Social (R$)",value=float(ir.get("social") or 0),step=0.01,format="%.2f",key="ir_social")
+        missao=c5.number_input("Missão (R$)",value=float(ir.get("missao") or 0),step=0.01,format="%.2f",key="ir_missao")
+        ti=diz_e+diz_s+oferta+social+missao
+        st.metric("Total Enviado à Igreja",fmt(ti))
+    with t2:
+        st.info("Registre as retiradas pessoais do mês.")
+        c1,c2,c3=st.columns(3)
+        rs=c1.number_input("Sandro (R$)",value=float(ir.get("ret_sandro") or 0),step=0.01,format="%.2f",key="ret_sandro")
+        ro=c2.number_input("Outro Sócio (R$)",value=float(ir.get("ret_outro") or 0),step=0.01,format="%.2f",key="ret_outro")
+        rx=c3.number_input("Outros (R$)",value=float(ir.get("ret_outros") or 0),step=0.01,format="%.2f",key="ret_outros")
+        tr=rs+ro+rx
+        obs=st.text_input("Observações",value=ir.get("obs_ret",""),key="obs_ret")
+        st.metric("Total Retiradas",fmt(tr))
+    st.markdown('<hr style="border-color:#252932;margin:16px 0">', unsafe_allow_html=True)
+    if st.button("💾 Salvar Igreja & Retiradas"):
+        salvar_ir(mes,{"diz_e":diz_e,"diz_s":diz_s,"oferta":oferta,"social":social,"missao":missao,
+                       "total_igreja":ti,"ret_sandro":rs,"ret_outro":ro,"ret_outros":rx,"total_ret":tr,"obs_ret":obs})
+        st.success("Salvo!"); st.rerun()
+
+# ── HISTÓRICO ─────────────────────────────────────────────────────────────────
+def pagina_historico():
+    titulo("📊 Histórico de Fechamentos")
+    meses=get_meses()
+    if not meses: st.info("Nenhum fechamento registrado ainda."); return
+    rows=[]
+    for m in meses:
+        ap=get_ap(m); ir=get_ir(m); dados=get_checklist(m)
+        conc=sum(1 for d in dados.values() if d.get("status")=="✅ Concluído")
+        rows.append({"Mês":m,"LL Eletrônico":nv(ap.get("e_total")),"LL Sublimação":nv(ap.get("s_total")),
+                     "LL Total Grupo":nv(ap.get("total_grupo")),"Contrib. Igreja":nv(ir.get("total_igreja")),
+                     "Retirada Pessoal":nv(ir.get("total_ret")),"Dízimo Total":nv(ir.get("diz_e"))+nv(ir.get("diz_s")),
+                     "Tarefas":f"{conc}/{TOTAL_TAREFAS}"})
+    df=pd.DataFrame(rows)
+    sec("Resumo Anual")
+    c1,c2,c3,c4=st.columns(4)
+    c1.metric("Total LL Grupo",fmt(df["LL Total Grupo"].sum()))
+    c2.metric("Total Igreja",fmt(df["Contrib. Igreja"].sum()))
+    c3.metric("Total Retiradas",fmt(df["Retirada Pessoal"].sum()))
+    c4.metric("Meses",len(df))
+    sec("Detalhamento por Mês")
+    df2=df.copy()
+    for c in ["LL Eletrônico","LL Sublimação","LL Total Grupo","Contrib. Igreja","Retirada Pessoal","Dízimo Total"]:
+        df2[c]=df2[c].apply(fmt)
+    st.dataframe(df2,use_container_width=True,hide_index=True)
+    mes_sel=st.selectbox("Ver checklist do mês:",meses)
+    dados=get_checklist(mes_sel)
+    conc=sum(1 for d in dados.values() if d.get("status")=="✅ Concluído")
+    na=sum(1 for d in dados.values() if d.get("status")=="⊘ N/A")
+    pct=int(conc/(TOTAL_TAREFAS-na)*100) if (TOTAL_TAREFAS-na)>0 else 0
+    sec(f"Checklist — {mes_sel} ({pct}% concluído)")
+    rows2=[]
+    for secao,tarefas in TAREFAS:
+        for t in tarefas:
+            d=dados.get(t,{})
+            rows2.append({"Seção":secao,"Tarefa":t,"Status":d.get("status","☐ Pendente"),"Obs":d.get("obs","")})
+    st.dataframe(pd.DataFrame(rows2),use_container_width=True,hide_index=True)
+
+# ── RESUMO WHATSAPP ───────────────────────────────────────────────────────────
+def pagina_resumo(mes):
+    titulo(f"📱 Resumo para WhatsApp — {mes}")
+    ap=get_ap(mes); ir=get_ir(mes); dados=get_checklist(mes)
+    conc=sum(1 for d in dados.values() if d.get("status")=="✅ Concluído")
+    ll_e=nv(ap.get("e_total")); ll_s=nv(ap.get("s_total"))
+    total=nv(ap.get("total_grupo")); igreja=nv(ir.get("total_igreja"))
+    texto=f"""📋  FECHAMENTO  —  {mes}
+{'─'*44}
+
+⚡  PRATES ELETRÔNICO
+    Resultado Principal   →   {fmt(nv(ap.get('e_lb'))-nv(ap.get('e_de')))}   |   Dízimo: {fmt(nv(ap.get('e_dizimo')))}
+    Sobras e Faltas          →   {fmt(nv(ap.get('e_sf_lb'))-nv(ap.get('e_sf_de')))}   |   Dízimo: {fmt(nv(ap.get('e_sf_dizimo')))}
+    Lucro Líquido Total   →   {fmt(ll_e)}
+
+🎨  PRATES SUBLIMAÇÃO
+    Resultado Principal   →   {fmt(nv(ap.get('s_lb'))-nv(ap.get('s_de')))}   |   Dízimo: {fmt(nv(ap.get('s_dizimo')))}
+    Sobras e Faltas          →   {fmt(nv(ap.get('s_sf_lb'))-nv(ap.get('s_sf_de')))}   |   Dízimo: {fmt(nv(ap.get('s_sf_dizimo')))}
+    Lucro Líquido Total   →   {fmt(ll_s)}
+
+⛪  CONTRIBUIÇÕES À IGREJA
+    Dízimo Eletrônico    →   {fmt(nv(ir.get('diz_e')))}
+    Dízimo Sublimação   →   {fmt(nv(ir.get('diz_s')))}
+    Oferta                        →   {fmt(nv(ir.get('oferta')))}
+    Social                        →   {fmt(nv(ir.get('social')))}
+    Missão                       →   {fmt(nv(ir.get('missao')))}
+    TOTAL ENVIADO À IGREJA  →   {fmt(igreja)}
+
+📊  LUCRO LÍQUIDO TOTAL DO GRUPO  →  {fmt(total)}
+      Checklist: {conc} de {TOTAL_TAREFAS} tarefas concluídas
+{'─'*44}"""
+    st.text_area("Copie o texto abaixo:", texto, height=500)
+
+# ── MAIN ──────────────────────────────────────────────────────────────────────
+if "logado" not in st.session_state: st.session_state.logado = False
+
+if not st.session_state.logado:
+    tela_login()
+else:
+    mes = sidebar()
+    pag = st.session_state.get("pagina","📋 Checklist")
+    if   pag=="📋 Checklist":            pagina_checklist(mes)
+    elif pag=="💰 Apuração Financeira":   pagina_apuracao(mes)
+    elif pag=="🎯 Metas":                pagina_metas(mes)
+    elif pag=="⛪ Igreja & Retiradas":    pagina_igreja(mes)
+    elif pag=="📊 Histórico":            pagina_historico()
+    elif pag=="📱 Resumo WhatsApp":      pagina_resumo(mes)
