@@ -1,3 +1,9 @@
-streamlit>=1.32.0
-supabase>=2.0.0
-pandas>=2.0.0
+# requirements.txt — Grupo Prates Fechamento v3.1
+# Versões fixadas para evitar quebra no deploy
+
+streamlit==1.43.2
+supabase==2.10.0
+bcrypt==4.2.1
+
+# Apenas se usar pandas (checklist/apuração):
+# pandas==2.2.3
