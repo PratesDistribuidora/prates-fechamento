@@ -340,10 +340,18 @@ def tela_login():
                 else:
                     st.error("Usuário ou senha incorretos.")
 
-        st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
-        if st.button("🔑 Esqueci minha senha", use_container_width=True):
-            st.session_state.tela_auth = "recuperar"
-            st.rerun()
+        st.markdown("""
+        <div style='text-align:center;margin-top:12px'>
+            <span style='color:#6b7280;font-size:12px;cursor:pointer'
+                  onclick='window.parent.postMessage({type:"streamlit:setComponentValue"}, "*")'>
+            </span>
+        </div>
+        """, unsafe_allow_html=True)
+        col_a, col_b, col_c = st.columns([1,1,1])
+        with col_b:
+            if st.button("🔑 Esqueci minha senha", use_container_width=True):
+                st.session_state.tela_auth = "recuperar"
+                st.rerun()
 
         st.markdown("""
         <div style='text-align:center;color:#3a4050;font-size:11px;margin-top:1.5rem'>
