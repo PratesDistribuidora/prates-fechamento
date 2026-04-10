@@ -72,6 +72,31 @@ html,body,[class*="css"]{font-family:'Segoe UI',sans-serif;}
 }
 .stButton>button{background:#1e6b3e;color:#fff;border:none;border-radius:5px;padding:6px 16px;font-size:13px;font-weight:500;}
 .stButton>button:hover{background:#248a4e;}
+[data-testid="stSidebar"] [data-testid="stRadio"] label {
+    display:flex !important;align-items:center !important;
+    padding:8px 14px !important;border-radius:6px !important;
+    color:#8892a0 !important;font-size:13px !important;
+    cursor:pointer !important;transition:all .15s !important;
+    border-left:3px solid transparent !important;
+    margin:1px 0 !important;
+}
+[data-testid="stSidebar"] [data-testid="stRadio"] label:hover {
+    background:#1a2235 !important;color:#c5cad3 !important;
+}
+[data-testid="stSidebar"] [data-testid="stRadio"] [aria-checked="true"] + label,
+[data-testid="stSidebar"] [data-testid="stRadio"] label[data-checked="true"] {
+    background:#1a2235 !important;color:#e2e8f0 !important;
+    border-left:3px solid #22c55e !important;font-weight:600 !important;
+}
+[data-testid="stSidebar"] [data-testid="stRadio"] [data-testid="stMarkdownContainer"] p {
+    font-size:13px !important;
+}
+[data-testid="stSidebar"] [data-testid="stRadio"] div[role="radiogroup"] {
+    gap:0 !important;
+}
+[data-testid="stSidebar"] [data-testid="stRadio"] input[type="radio"] {
+    display:none !important;
+}
 [data-testid="stMetric"]{background:#16191f;border-radius:6px;padding:12px 14px;border:1px solid #252932;}
 [data-testid="stMetricLabel"]{color:#6b7280 !important;font-size:11px !important;}
 [data-testid="stMetricValue"]{color:#e2e8f0 !important;font-size:20px !important;font-weight:600 !important;}
@@ -463,12 +488,15 @@ def sidebar():
         if pode("gerenciar_usuarios"):
             MENU.append(("👥", "Usuários", "#94a3b8"))
 
-        for icone, label, cor in MENU:
-            chave = f"{icone} {label}"
-            ativo = st.session_state.pagina == chave
-            if st.button(f"{icone}  {label}", key=f"nav_{label}", use_container_width=True):
-                st.session_state.pagina = chave
-                st.rerun()
+        opcoes = [f"{icone}  {label}" for icone, label, cor in MENU]
+        chaves = [f"{icone} {label}" for icone, label, cor in MENU]
+
+        if st.session_state.pagina not in chaves:
+            st.session_state.pagina = chaves[0]
+
+        idx_atual = chaves.index(st.session_state.pagina) if st.session_state.pagina in chaves else 0
+        escolha = st.radio("", opcoes, index=idx_atual, key="nav_radio", label_visibility="collapsed")
+        st.session_state.pagina = chaves[opcoes.index(escolha)]
 
         st.markdown('<hr style="border-color:#252932;margin:10px 0">', unsafe_allow_html=True)
         if st.button("🚪  Sair", key="btn_sair", use_container_width=True):
@@ -783,11 +811,19 @@ if st.session_state.get("tela_auth") == "recuperar":
     st.stop()
 
 if not st.session_state.get("logado"):
-    tela_login()
+    st.markdown("""
+    <style>
+    section[data-testid="stSidebar"] { display: none !important; }
+    [data-testid="stAppViewContainer"] > section.main > div { padding: 0 !important; }
+    </style>
+    """, unsafe_allow_html=True)
+    placeholder = st.empty()
+    with placeholder.container():
+        tela_login()
     st.stop()
 
 mes = sidebar()
-pag = st.session_state.get("pagina","📋 Checklist")
+pag = st.session_state.get("pagina", "📋 Checklist")
 
 if   "Checklist"  in pag: pagina_checklist(mes)
 elif "Apuração"   in pag: pagina_apuracao(mes)
