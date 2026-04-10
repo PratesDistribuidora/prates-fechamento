@@ -55,19 +55,20 @@ html,body,[class*="css"]{font-family:'Segoe UI',sans-serif;}
     background:transparent !important;border:none !important;
     border-radius:6px !important;
     color:#94a3b8 !important;font-size:13px !important;font-weight:400 !important;
-    padding:9px 14px !important;text-align:left !important;
-    justify-content:flex-start !important;align-items:center !important;
+    padding:9px 14px !important;
     margin:1px 0 !important;box-shadow:none !important;
     width:100% !important;transition:all .15s !important;
-    display:flex !important;
+    display:flex !important;flex-direction:row !important;
+    justify-content:flex-start !important;align-items:center !important;
+    text-align:left !important;
 }
 [data-testid="stSidebar"] .stButton>button:hover{
     background:#1e293b !important;color:#e2e8f0 !important;
 }
-[data-testid="stSidebar"] .stButton>button p,
-[data-testid="stSidebar"] .stButton>button div{
-    text-align:left !important;width:100% !important;
+[data-testid="stSidebar"] .stButton>button *{
+    text-align:left !important;width:auto !important;
     margin:0 !important;padding:0 !important;
+    flex:unset !important;
 }
 .stButton>button{background:#1e6b3e;color:#fff;border:none;border-radius:5px;padding:6px 16px;font-size:13px;font-weight:500;}
 .stButton>button:hover{background:#248a4e;}
@@ -95,6 +96,16 @@ html,body,[class*="css"]{font-family:'Segoe UI',sans-serif;}
 ::-webkit-scrollbar-thumb{background:#252932;border-radius:3px;}
 footer{visibility:hidden;} #MainMenu{visibility:hidden;}
 </style>
+<script>
+function fixSidebarButtons(){
+    document.querySelectorAll('[data-testid="stSidebar"] button').forEach(b=>{
+        b.style.justifyContent='flex-start';
+        b.style.textAlign='left';
+        b.style.display='flex';
+    });
+}
+setInterval(fixSidebarButtons, 500);
+</script>
 """, unsafe_allow_html=True)
 
 def fmt(v):
