@@ -347,8 +347,9 @@ def tela_login():
                 else:
                     st.error("Usuário ou senha incorretos.")
 
-        st.markdown("<p style='text-align:center;margin-top:8px;font-size:12px;color:#6b7280'>🔑 <a href='#' style='color:#6b7280;text-decoration:underline' id='forgot_link'>Esqueci minha senha</a></p>", unsafe_allow_html=True)
-        if st.button("Esqueci minha senha", key="btn_forgot", help="Recuperar senha"):
+        st.markdown("<p style='text-align:center;margin-top:8px;font-size:12px;color:#6b7280;cursor:pointer' onclick="window.location='?recuperar=1'">🔑 Esqueci minha senha</p>", unsafe_allow_html=True)
+        if st.query_params.get("recuperar"):
+            st.query_params.clear()
             st.session_state.tela_auth = "recuperar"
             st.rerun()
 
