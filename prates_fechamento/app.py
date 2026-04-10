@@ -10,11 +10,15 @@ import os, base64
 
 # Carrega logo para favicon
 _favicon = "📋"
-for _p in ["prates_fechamento/logo.jpeg","prates_fechamento/logo.jpg","prates_fechamento/logo.png","logo.jpeg","logo.jpg","logo.png"]:
-    if os.path.exists(_p):
-        from PIL import Image
-        _favicon = Image.open(_p)
-        break
+try:
+    from PIL import Image
+    for _p in ["prates_fechamento/logo.jpeg","prates_fechamento/logo.jpg",
+               "prates_fechamento/logo.png","logo.jpeg","logo.jpg","logo.png"]:
+        if os.path.exists(_p):
+            _favicon = Image.open(_p)
+            break
+except Exception:
+    _favicon = "📋"
 
 st.set_page_config(
     page_title="Fechamento Mensal · Grupo Prates",
@@ -563,15 +567,15 @@ def sidebar():
         if pode("gerenciar_usuarios"):
             MENU.append(("👥", "Usuários", "#94a3b8"))
 
-        opcoes = [f"{icone}  {label}" for icone, label, cor in MENU]
-        chaves = [f"{icone} {label}" for icone, label, cor in MENU]
+        paginas_menu = [f"{icone} {label}" for icone, label, cor in MENU]
 
-        if st.session_state.pagina not in chaves:
-            st.session_state.pagina = chaves[0]
+        if st.session_state.get("pagina") not in paginas_menu:
+            st.session_state.pagina = paginas_menu[0]
 
-        idx_atual = chaves.index(st.session_state.pagina) if st.session_state.pagina in chaves else 0
-        escolha = st.radio("", opcoes, index=idx_atual, key="nav_radio", label_visibility="collapsed")
-        st.session_state.pagina = chaves[opcoes.index(escolha)]
+        idx_atual = paginas_menu.index(st.session_state.pagina)
+        pagina_sel = st.radio("", paginas_menu, index=idx_atual,
+                              key="nav_radio", label_visibility="collapsed")
+        st.session_state.pagina = pagina_sel
 
         st.markdown('<hr style="border-color:#252932;margin:10px 0">', unsafe_allow_html=True)
         if st.button("🚪  Sair", key="btn_sair", use_container_width=True):
@@ -902,13 +906,10 @@ if not st.session_state.get("logado"):
 mes = sidebar()
 pag = st.session_state.get("pagina", "📋 Checklist")
 
-# Container limpo a cada troca de página — evita sobreposição
-_pagina_container = st.empty()
-with _pagina_container.container():
-    if   "Checklist"  in pag: pagina_checklist(mes)
-    elif "Apuração"   in pag: pagina_apuracao(mes)
-    elif "Metas"      in pag: pagina_metas(mes)
-    elif "Igreja"     in pag: pagina_igreja(mes)
-    elif "Histórico"  in pag: pagina_historico()
-    elif "WhatsApp"   in pag: pagina_resumo(mes)
-    elif "Usuários"   in pag: pagina_usuarios()
+if   "Checklist"  in pag: pagina_checklist(mes)
+elif "Apuração"   in pag: pagina_apuracao(mes)
+elif "Metas"      in pag: pagina_metas(mes)
+elif "Igreja"     in pag: pagina_igreja(mes)
+elif "Histórico"  in pag: pagina_historico()
+elif "WhatsApp"   in pag: pagina_resumo(mes)
+elif "Usuários"   in pag: pagina_usuarios()
