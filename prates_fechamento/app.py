@@ -32,71 +32,7 @@ def get_logo_b64():
                 return base64.b64encode(f.read()).decode()
     return None
 
-def inject_pwa():
-    """Injeta PWA + favicon com o logo da Prates."""
-    logo = get_logo_b64()
-    if not logo:
-        return
 
-    ext = "png" if os.path.exists("logo.png") else "jpeg"
-    mime = "image/png" if ext == "png" else "image/jpeg"
-    icon_data = f"data:{mime};base64,{logo}"
-
-    import json
-    manifest = {
-        "name": "Prates Fechamento",
-        "short_name": "Prates",
-        "description": "Fechamento Mensal — Grupo Prates",
-        "start_url": "https://fechamento-prates.streamlit.app",
-        "display": "standalone",
-        "background_color": "#111318",
-        "theme_color": "#22c55e",
-        "orientation": "portrait-primary",
-        "icons": [
-            {"src": icon_data, "sizes": "192x192", "type": mime, "purpose": "any maskable"},
-            {"src": icon_data, "sizes": "512x512", "type": mime, "purpose": "any maskable"},
-        ]
-    }
-    manifest_b64 = __import__('base64').b64encode(json.dumps(manifest).encode()).decode()
-    manifest_uri = f"data:application/json;base64,{manifest_b64}"
-
-    st.markdown(f"""
-    <link rel="apple-touch-icon" href="{icon_data}">
-    <link rel="manifest" href="{manifest_uri}">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Fechamento Prates">
-    <meta name="theme-color" content="#22c55e">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-    <style>
-    @media (display-mode: standalone) {{
-        [data-testid="stHeader"] {{ display: none !important; }}
-        [data-testid="stToolbar"] {{ display: none !important; }}
-        .stDeployButton {{ display: none !important; }}
-        #MainMenu {{ display: none !important; }}
-        footer {{ display: none !important; }}
-    }}
-    </style>
-    <script>
-    (function() {{
-        var ico = "{icon_data}";
-        function setFavicon() {{
-            var links = document.querySelectorAll("link[rel*='icon']");
-            links.forEach(function(l) {{ l.parentNode.removeChild(l); }});
-            var link = document.createElement('link');
-            link.type = '{mime}';
-            link.rel = 'icon';
-            link.href = ico;
-            document.getElementsByTagName('head')[0].appendChild(link);
-        }}
-        setFavicon();
-        setTimeout(setFavicon, 500);
-        setTimeout(setFavicon, 1500);
-        setTimeout(setFavicon, 3000);
-    }})();
-    </script>
-    """, unsafe_allow_html=True)
 
 NIVEIS = {
     "admin":  {"label": "Administrador", "cor": "#22c55e", "icone": "👑"},
@@ -513,7 +449,8 @@ def tela_redefinir_senha(token):
 # ── SIDEBAR ───────────────────────────────────────────────
 def sidebar():
     with st.sidebar:
-        logo  = get_logo_b64()
+        logo  = st.session_state.get("_logo_cache") or get_logo_b64()
+        if logo: st.session_state["_logo_cache"] = logo
         nivel = st.session_state.get("nivel_acesso","viewer")
         info  = NIVEIS[nivel]
         nome  = st.session_state.get("usuario","")
@@ -870,8 +807,6 @@ def pagina_resumo(mes):
 # ══════════════════════════════════════════════════════════
 # MAIN
 # ══════════════════════════════════════════════════════════
-inject_pwa()
-
 token_url = st.query_params.get("token")
 if token_url and not st.session_state.get("logado"):
     tela_redefinir_senha(token_url)
