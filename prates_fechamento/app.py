@@ -323,6 +323,7 @@ def tela_login():
             u = st.text_input("Usuário ou E-mail", placeholder="usuario ou email@...")
             s = st.text_input("Senha", type="password", placeholder="••••••••")
             entrar = st.form_submit_button("Entrar", use_container_width=True)
+            esqueci = st.form_submit_button("🔑 Esqueci minha senha")
 
         if esqueci:
             st.session_state.tela_auth = "recuperar"
