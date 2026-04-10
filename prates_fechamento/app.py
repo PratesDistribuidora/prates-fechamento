@@ -50,8 +50,8 @@ def inject_pwa():
 
     import json
     manifest = {
-        "name": "Fechamento Prates",
-        "short_name": "Fechamento",
+        "name": "Prates Fechamento",
+        "short_name": "Prates",
         "description": "Fechamento Mensal — Grupo Prates",
         "start_url": "https://fechamento-prates.streamlit.app",
         "display": "standalone",
