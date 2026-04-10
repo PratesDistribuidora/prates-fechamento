@@ -35,39 +35,29 @@ def inject_pwa():
     if not logo:
         return
 
-    # Detecta extensão do logo
-    ext = "jpeg"
-    for nome in ["logo.jpeg","logo.jpg"]:
-        if os.path.exists(nome):
-            ext = "jpeg"; break
-    if os.path.exists("logo.png"):
-        ext = "png"
-
+    ext = "png" if os.path.exists("logo.png") else "jpeg"
     mime = "image/png" if ext == "png" else "image/jpeg"
     icon_data = f"data:{mime};base64,{logo}"
 
-    # Manifest PWA como data URI
-    import json, urllib.parse
+    import json
     manifest = {
         "name": "Fechamento Prates",
         "short_name": "Fechamento",
-        "description": "Sistema de Fechamento Mensal — Grupo Prates",
+        "description": "Fechamento Mensal — Grupo Prates",
         "start_url": "https://fechamento-prates.streamlit.app",
         "display": "standalone",
         "background_color": "#111318",
         "theme_color": "#22c55e",
         "orientation": "portrait-primary",
         "icons": [
-            {"src": icon_data, "sizes": "192x192", "type": mime},
-            {"src": icon_data, "sizes": "512x512", "type": mime},
+            {"src": icon_data, "sizes": "192x192", "type": mime, "purpose": "any maskable"},
+            {"src": icon_data, "sizes": "512x512", "type": mime, "purpose": "any maskable"},
         ]
     }
-    manifest_json = json.dumps(manifest)
-    manifest_b64 = __import__('base64').b64encode(manifest_json.encode()).decode()
+    manifest_b64 = __import__('base64').b64encode(json.dumps(manifest).encode()).decode()
     manifest_uri = f"data:application/json;base64,{manifest_b64}"
 
     st.markdown(f"""
-    <link rel="icon" type="{mime}" href="{icon_data}">
     <link rel="apple-touch-icon" href="{icon_data}">
     <link rel="manifest" href="{manifest_uri}">
     <meta name="mobile-web-app-capable" content="yes">
@@ -85,6 +75,24 @@ def inject_pwa():
         footer {{ display: none !important; }}
     }}
     </style>
+    <script>
+    (function() {{
+        var ico = "{icon_data}";
+        function setFavicon() {{
+            var links = document.querySelectorAll("link[rel*='icon']");
+            links.forEach(function(l) {{ l.parentNode.removeChild(l); }});
+            var link = document.createElement('link');
+            link.type = '{mime}';
+            link.rel = 'icon';
+            link.href = ico;
+            document.getElementsByTagName('head')[0].appendChild(link);
+        }}
+        setFavicon();
+        setTimeout(setFavicon, 500);
+        setTimeout(setFavicon, 1500);
+        setTimeout(setFavicon, 3000);
+    }})();
+    </script>
     """, unsafe_allow_html=True)
 
 NIVEIS = {
