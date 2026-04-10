@@ -55,15 +55,19 @@ html,body,[class*="css"]{font-family:'Segoe UI',sans-serif;}
     background:transparent !important;border:none !important;
     border-radius:6px !important;
     color:#94a3b8 !important;font-size:13px !important;font-weight:400 !important;
-    padding:9px 14px !important;text-align:left !important;justify-content:flex-start !important;
+    padding:9px 14px !important;text-align:left !important;
+    justify-content:flex-start !important;align-items:center !important;
     margin:1px 0 !important;box-shadow:none !important;
     width:100% !important;transition:all .15s !important;
+    display:flex !important;
 }
 [data-testid="stSidebar"] .stButton>button:hover{
     background:#1e293b !important;color:#e2e8f0 !important;
 }
-[data-testid="stSidebar"] .stButton>button p{
-    text-align:left !important;
+[data-testid="stSidebar"] .stButton>button p,
+[data-testid="stSidebar"] .stButton>button div{
+    text-align:left !important;width:100% !important;
+    margin:0 !important;padding:0 !important;
 }
 .stButton>button{background:#1e6b3e;color:#fff;border:none;border-radius:5px;padding:6px 16px;font-size:13px;font-weight:500;}
 .stButton>button:hover{background:#248a4e;}
