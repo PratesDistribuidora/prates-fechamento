@@ -53,11 +53,17 @@ html,body,[class*="css"]{font-family:'Segoe UI',sans-serif;}
 [data-testid="stSidebar"] *{color:#c5cad3 !important;}
 [data-testid="stSidebar"] .stButton>button{
     background:transparent !important;border:none !important;
-    color:transparent !important;font-size:1px !important;
-    padding:0 !important;margin:-28px 0 0 0 !important;
-    height:36px !important;width:100% !important;
-    position:relative !important;z-index:1 !important;
-    box-shadow:none !important;
+    border-radius:6px !important;
+    color:#94a3b8 !important;font-size:13px !important;font-weight:400 !important;
+    padding:9px 14px !important;text-align:left !important;justify-content:flex-start !important;
+    margin:1px 0 !important;box-shadow:none !important;
+    width:100% !important;transition:all .15s !important;
+}
+[data-testid="stSidebar"] .stButton>button:hover{
+    background:#1e293b !important;color:#e2e8f0 !important;
+}
+[data-testid="stSidebar"] .stButton>button p{
+    text-align:left !important;
 }
 .stButton>button{background:#1e6b3e;color:#fff;border:none;border-radius:5px;padding:6px 16px;font-size:13px;font-weight:500;}
 .stButton>button:hover{background:#248a4e;}
@@ -445,34 +451,12 @@ def sidebar():
         for icone, label, cor in MENU:
             chave = f"{icone} {label}"
             ativo = st.session_state.pagina == chave
-            st.markdown(f"""
-            <div style='
-                display:flex;align-items:center;gap:10px;
-                padding:8px 12px;border-radius:8px;margin:2px 0;
-                background:{"#1a2235" if ativo else "transparent"};
-                border-left:3px solid {cor if ativo else "transparent"};
-                cursor:pointer;
-            '>
-                <span style='font-size:16px'>{icone}</span>
-                <span style='font-size:13px;color:{"#e2e8f0" if ativo else "#8892a0"};
-                             font-weight:{"600" if ativo else "400"}'>{label}</span>
-            </div>
-            """, unsafe_allow_html=True)
-            if st.button(label, key=f"nav_{label}", use_container_width=True):
+            if st.button(f"{icone}  {label}", key=f"nav_{label}", use_container_width=True):
                 st.session_state.pagina = chave
                 st.rerun()
 
         st.markdown('<hr style="border-color:#252932;margin:10px 0">', unsafe_allow_html=True)
-
-        # Botão Sair estilo Sublimação
-        st.markdown("""
-        <div style='display:flex;align-items:center;gap:10px;padding:8px 12px;
-                    border-radius:8px;border-left:3px solid #ef4444'>
-            <span style='font-size:16px'>🚪</span>
-            <span style='font-size:13px;color:#ef4444;font-weight:500'>Sair</span>
-        </div>
-        """, unsafe_allow_html=True)
-        if st.button("Sair", key="btn_sair", use_container_width=True):
+        if st.button("🚪  Sair", key="btn_sair", use_container_width=True):
             for k in ["logado","usuario_id","usuario","usuario_email","nivel_acesso","pagina"]:
                 st.session_state.pop(k, None)
             st.rerun()
