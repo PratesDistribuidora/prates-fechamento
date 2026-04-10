@@ -8,9 +8,18 @@ from datetime import datetime
 import pandas as pd
 import os, base64
 
+# Carrega logo para favicon
+_favicon = "📋"
+for _p in ["prates_fechamento/logo.jpeg","prates_fechamento/logo.jpg","prates_fechamento/logo.png","logo.jpeg","logo.jpg","logo.png"]:
+    if os.path.exists(_p):
+        from PIL import Image
+        _favicon = Image.open(_p)
+        break
+
 st.set_page_config(
     page_title="Fechamento Mensal · Grupo Prates",
-    page_icon="📋", layout="wide",
+    page_icon=_favicon,
+    layout="wide",
     initial_sidebar_state="expanded",
 )
 
