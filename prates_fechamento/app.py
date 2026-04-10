@@ -281,6 +281,13 @@ def tela_login():
         border:none !important;border-radius:5px !important;
         font-size:13px !important;font-weight:500 !important;
     }
+    /* Esconde o botão esqueci e mantém só o link acima dele */
+    div[data-testid="stButton"]:has(button[key="btn_forgot"]) {
+        height: 0 !important;
+        overflow: hidden !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
     footer{visibility:hidden;} #MainMenu{visibility:hidden;}
     </style>
     """, unsafe_allow_html=True)
@@ -323,11 +330,6 @@ def tela_login():
             u = st.text_input("Usuário ou E-mail", placeholder="usuario ou email@...")
             s = st.text_input("Senha", type="password", placeholder="••••••••")
             entrar = st.form_submit_button("Entrar", use_container_width=True)
-            esqueci = st.form_submit_button("🔑 Esqueci minha senha")
-
-        if esqueci:
-            st.session_state.tela_auth = "recuperar"
-            st.rerun()
 
         if entrar:
             if not u or not s:
@@ -344,6 +346,11 @@ def tela_login():
                     st.rerun()
                 else:
                     st.error("Usuário ou senha incorretos.")
+
+        st.markdown("<p style='text-align:center;margin-top:8px;font-size:12px;color:#6b7280'>🔑 <a href='#' style='color:#6b7280;text-decoration:underline' id='forgot_link'>Esqueci minha senha</a></p>", unsafe_allow_html=True)
+        if st.button("Esqueci minha senha", key="btn_forgot", help="Recuperar senha"):
+            st.session_state.tela_auth = "recuperar"
+            st.rerun()
 
         st.markdown("""
         <div style='text-align:center;margin-top:12px'>
