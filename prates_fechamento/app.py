@@ -206,22 +206,33 @@ def get_meses():
 def fazer_login(login_val, senha):
     import bcrypt, hashlib
     val = login_val.strip()
-    r = supabase.table("usuarios").select("id,usuario,email,senha_hash,nivel,ativo").eq("email", val.lower()).execute()
-    if not r.data:
-        r = supabase.table("usuarios").select("id,usuario,email,senha_hash,nivel,ativo").eq("usuario", val).execute()
+    # Busca todos e filtra em Python — evita erro quando email é NULL
+    r = supabase.table("usuarios").select("id,usuario,email,senha_hash,nivel,ativo").execute()
     if not r.data: return None
-    u = r.data[0]
+    u = None
+    for row in r.data:
+        if row.get("usuario","").lower() == val.lower():
+            u = row; break
+        if row.get("email") and row["email"].lower() == val.lower():
+            u = row; break
+    if not u: return None
     if not u.get("ativo", True): return None
     h = u["senha_hash"]
-    if h.startswith("$2b$") or h.startswith("$2a$"):
-        ok = bcrypt.checkpw(senha.encode(), h.encode())
-    else:
-        ok = (hashlib.sha256(senha.encode()).hexdigest() == h)
-        if ok:
-            nh = bcrypt.hashpw(senha.encode(), bcrypt.gensalt(12)).decode()
-            supabase.table("usuarios").update({"senha_hash": nh}).eq("id", u["id"]).execute()
+    try:
+        if h.startswith("$2b$") or h.startswith("$2a$"):
+            ok = bcrypt.checkpw(senha.encode(), h.encode())
+        else:
+            ok = (hashlib.sha256(senha.encode()).hexdigest() == h)
+            if ok:
+                nh = bcrypt.hashpw(senha.encode(), bcrypt.gensalt(12)).decode()
+                supabase.table("usuarios").update({"senha_hash": nh}).eq("id", u["id"]).execute()
+    except Exception:
+        return None
     if not ok: return None
-    supabase.table("usuarios").update({"ultimo_acesso": datetime.utcnow().isoformat()}).eq("id", u["id"]).execute()
+    try:
+        supabase.table("usuarios").update({"ultimo_acesso": datetime.utcnow().isoformat()}).eq("id", u["id"]).execute()
+    except Exception:
+        pass
     return u
 
 def solicitar_recuperacao(email):
