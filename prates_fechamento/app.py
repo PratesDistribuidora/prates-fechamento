@@ -458,8 +458,7 @@ def sidebar():
                              font-weight:{"600" if ativo else "400"}'>{label}</span>
             </div>
             """, unsafe_allow_html=True)
-            if st.button(label, key=f"nav_{label}", use_container_width=True,
-                         label_visibility="collapsed"):
+            if st.button(label, key=f"nav_{label}", use_container_width=True):
                 st.session_state.pagina = chave
                 st.rerun()
 
@@ -473,8 +472,7 @@ def sidebar():
             <span style='font-size:13px;color:#ef4444;font-weight:500'>Sair</span>
         </div>
         """, unsafe_allow_html=True)
-        if st.button("Sair", key="btn_sair", use_container_width=True,
-                     label_visibility="collapsed"):
+        if st.button("Sair", key="btn_sair", use_container_width=True):
             for k in ["logado","usuario_id","usuario","usuario_email","nivel_acesso","pagina"]:
                 st.session_state.pop(k, None)
             st.rerun()
