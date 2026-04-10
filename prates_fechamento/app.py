@@ -285,7 +285,7 @@ def tela_login():
     </style>
     """, unsafe_allow_html=True)
 
-    col = st.columns([1, 1.4, 1])[1]
+    col = st.columns([1.5, 1, 1.5])[1]
     with col:
         st.markdown("<div style='height:40px'></div>", unsafe_allow_html=True)
 
