@@ -23,7 +23,7 @@ st.set_page_config(
     page_title="Fechamento Mensal · Grupo Prates",
     page_icon=_favicon,
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="auto",
 )
 
 @st.cache_resource
@@ -135,7 +135,6 @@ html,body,[class*="css"]{font-family:'Segoe UI',sans-serif;}
 ::-webkit-scrollbar-thumb{background:#252932;border-radius:3px;}
 footer{visibility:hidden;} #MainMenu{visibility:hidden;}
 </style>
-<meta name="viewport" content="width=device-width, initial-scale=1">
 
 """, unsafe_allow_html=True)
 
