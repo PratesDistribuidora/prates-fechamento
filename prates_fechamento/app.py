@@ -8,17 +8,7 @@ from datetime import datetime
 import pandas as pd
 import os, base64
 
-# Carrega logo para favicon
 _favicon = "📋"
-try:
-    from PIL import Image
-    for _p in ["prates_fechamento/logo.jpeg","prates_fechamento/logo.jpg",
-               "prates_fechamento/logo.png","logo.jpeg","logo.jpg","logo.png"]:
-        if os.path.exists(_p):
-            _favicon = Image.open(_p)
-            break
-except Exception:
-    _favicon = "📋"
 
 st.set_page_config(
     page_title="Fechamento Mensal · Grupo Prates",
@@ -584,7 +574,7 @@ def sidebar():
             st.rerun()
 
         st.markdown(f'<p style="text-align:center;color:#3a4050;font-size:10px;margin-top:12px">Grupo Prates · Macaé/RJ · v3.1</p>', unsafe_allow_html=True)
-        return mes
+        return mes, pagina_sel
 
 # ── PÁGINA USUÁRIOS ───────────────────────────────────────
 def pagina_usuarios():
@@ -903,8 +893,7 @@ if not st.session_state.get("logado"):
         tela_login()
     st.stop()
 
-mes = sidebar()
-pag = st.session_state.get("pagina", "📋 Checklist")
+mes, pag = sidebar()
 
 if   "Checklist"  in pag: pagina_checklist(mes)
 elif "Apuração"   in pag: pagina_apuracao(mes)
