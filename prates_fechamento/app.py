@@ -902,10 +902,13 @@ if not st.session_state.get("logado"):
 mes = sidebar()
 pag = st.session_state.get("pagina", "📋 Checklist")
 
-if   "Checklist"  in pag: pagina_checklist(mes)
-elif "Apuração"   in pag: pagina_apuracao(mes)
-elif "Metas"      in pag: pagina_metas(mes)
-elif "Igreja"     in pag: pagina_igreja(mes)
-elif "Histórico"  in pag: pagina_historico()
-elif "WhatsApp"   in pag: pagina_resumo(mes)
-elif "Usuários"   in pag: pagina_usuarios()
+# Container limpo a cada troca de página — evita sobreposição
+_pagina_container = st.empty()
+with _pagina_container.container():
+    if   "Checklist"  in pag: pagina_checklist(mes)
+    elif "Apuração"   in pag: pagina_apuracao(mes)
+    elif "Metas"      in pag: pagina_metas(mes)
+    elif "Igreja"     in pag: pagina_igreja(mes)
+    elif "Histórico"  in pag: pagina_historico()
+    elif "WhatsApp"   in pag: pagina_resumo(mes)
+    elif "Usuários"   in pag: pagina_usuarios()
