@@ -347,23 +347,11 @@ def tela_login():
             </span>
         </div>
         """, unsafe_allow_html=True)
-        st.markdown("""
-        <style>
-        div[data-testid="stButton"] button[kind="secondary"] {
-            background: transparent !important;
-            border: 1px solid #252932 !important;
-            color: #6b7280 !important;
-            font-size: 12px !important;
-            padding: 4px 16px !important;
-            white-space: nowrap !important;
-        }
-        </style>
-        """, unsafe_allow_html=True)
-        col_a, col_b, col_c = st.columns([1.2, 1, 1.2])
-        with col_b:
-            if st.button("🔑 Esqueci minha senha", use_container_width=True, key="btn_forgot"):
-                st.session_state.tela_auth = "recuperar"
-                st.rerun()
+        st.markdown("<div style='margin-top:6px;text-align:center'>", unsafe_allow_html=True)
+        if st.button("🔑 Esqueci minha senha", key="btn_forgot"):
+            st.session_state.tela_auth = "recuperar"
+            st.rerun()
+        st.markdown("</div>", unsafe_allow_html=True)
 
         st.markdown("""
         <div style='text-align:center;color:#3a4050;font-size:11px;margin-top:1.5rem'>
