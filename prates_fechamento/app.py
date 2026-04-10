@@ -250,9 +250,12 @@ def redefinir_senha(token, nova):
 def tela_login():
     logo = get_logo_b64()
 
-    # CSS específico da tela de login
+    # CSS da tela de login
     st.markdown("""
     <style>
+    html,body,[class*="css"]{font-family:'Segoe UI',sans-serif;}
+    [data-testid="stAppViewContainer"]{background:#111318;}
+    [data-testid="stHeader"]{background:transparent;}
     [data-testid="stAppViewContainer"] > .main { padding-top: 0 !important; }
     div[data-testid="stForm"] {
         background: #16191f;
@@ -260,6 +263,25 @@ def tela_login():
         border-radius: 16px;
         padding: 2rem;
     }
+    [data-testid="stTextInput"] input {
+        background:#16191f !important;
+        border:1px solid #252932 !important;
+        border-radius:5px !important;
+        color:#e2e8f0 !important;
+        font-size:13px !important;
+    }
+    .stButton>button {
+        background:#1e6b3e;color:#fff;border:none;
+        border-radius:5px;padding:6px 16px;
+        font-size:13px;font-weight:500;width:100%;
+    }
+    .stButton>button:hover{background:#248a4e;}
+    [data-testid="stFormSubmitButton"] button {
+        background:#1e6b3e !important;color:#fff !important;
+        border:none !important;border-radius:5px !important;
+        font-size:13px !important;font-weight:500 !important;
+    }
+    footer{visibility:hidden;} #MainMenu{visibility:hidden;}
     </style>
     """, unsafe_allow_html=True)
 
