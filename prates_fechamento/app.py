@@ -53,15 +53,11 @@ html,body,[class*="css"]{font-family:'Segoe UI',sans-serif;}
 [data-testid="stSidebar"] *{color:#c5cad3 !important;}
 [data-testid="stSidebar"] .stButton>button{
     background:transparent !important;border:none !important;
-    border-left:3px solid transparent !important;border-radius:0 5px 5px 0 !important;
-    color:#8892a0 !important;font-size:13px !important;font-weight:400 !important;
-    padding:7px 14px !important;text-align:left !important;
-    margin:1px 0 !important;box-shadow:none !important;
-    width:100% !important;display:block !important;
-}
-[data-testid="stSidebar"] .stButton>button:hover{
-    background:#1a2235 !important;color:#c5cad3 !important;
-    border-left:3px solid #2d7a4f44 !important;
+    color:transparent !important;font-size:1px !important;
+    padding:0 !important;margin:-28px 0 0 0 !important;
+    height:36px !important;width:100% !important;
+    position:relative !important;z-index:1 !important;
+    box-shadow:none !important;
 }
 .stButton>button{background:#1e6b3e;color:#fff;border:none;border-radius:5px;padding:6px 16px;font-size:13px;font-weight:500;}
 .stButton>button:hover{background:#248a4e;}
@@ -280,33 +276,85 @@ def redefinir_senha(token, nova):
 # ── TELAS AUTH ────────────────────────────────────────────
 def tela_login():
     logo = get_logo_b64()
-    logo_html = f'<img src="data:image/jpeg;base64,{logo}" width="90" style="border-radius:50%;margin-bottom:8px">' if logo else '<div style="font-size:42px">📋</div>'
-    st.markdown(f'<div style="text-align:center;padding-top:60px">{logo_html}<div style="font-size:22px;font-weight:700;color:#e2e8f0;margin:8px 0 4px">Fechamento Mensal</div><div style="font-size:13px;color:#6b7280;margin-bottom:32px">Grupo Prates · Macaé/RJ</div></div>', unsafe_allow_html=True)
-    col = st.columns([1,1.2,1])[1]
+
+    # CSS específico da tela de login
+    st.markdown("""
+    <style>
+    [data-testid="stAppViewContainer"] > .main { padding-top: 0 !important; }
+    div[data-testid="stForm"] {
+        background: #16191f;
+        border: 1px solid #252932;
+        border-radius: 16px;
+        padding: 2rem;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    col = st.columns([1, 1.1, 1])[1]
     with col:
-        st.markdown('<div style="background:#16191f;border:1px solid #252932;border-radius:12px;padding:32px">', unsafe_allow_html=True)
-        u = st.text_input("👤 Usuário ou E-mail", placeholder="usuario ou email@...")
-        s = st.text_input("🔒 Senha", type="password", placeholder="••••••••")
-        if st.button("Entrar", use_container_width=True):
-            if u and s:
+        st.markdown("<div style='height:40px'></div>", unsafe_allow_html=True)
+
+        # Logo + título
+        if logo:
+            st.markdown(f"""
+            <div style='text-align:center;margin-bottom:1.5rem'>
+                <img src='data:image/jpeg;base64,{logo}'
+                     style='width:90px;height:90px;border-radius:50%;
+                            object-fit:cover;border:3px solid #22c55e;
+                            margin-bottom:12px'>
+                <div style='font-size:20px;font-weight:700;color:#e2e8f0'>
+                    Fechamento Mensal
+                </div>
+                <div style='font-size:12px;color:#6b7280;margin-top:4px'>
+                    Faça login para continuar
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown("""
+            <div style='text-align:center;margin-bottom:1.5rem'>
+                <div style='font-size:48px;margin-bottom:8px'>📋</div>
+                <div style='font-size:20px;font-weight:700;color:#e2e8f0'>
+                    Fechamento Mensal
+                </div>
+                <div style='font-size:12px;color:#6b7280;margin-top:4px'>
+                    Faça login para continuar
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        # Formulário — st.form garante que os valores são capturados corretamente
+        with st.form("form_login", clear_on_submit=False):
+            u = st.text_input("Usuário ou E-mail", placeholder="usuario ou email@...")
+            s = st.text_input("Senha", type="password", placeholder="••••••••")
+            entrar = st.form_submit_button("Entrar", use_container_width=True)
+
+        if entrar:
+            if not u or not s:
+                st.warning("Preencha usuário e senha.")
+            else:
                 with st.spinner("Verificando..."):
                     usuario = fazer_login(u, s)
                 if usuario:
                     st.session_state.logado        = True
                     st.session_state.usuario_id    = usuario["id"]
                     st.session_state.usuario       = usuario["usuario"]
-                    st.session_state.usuario_email = usuario.get("email","")
-                    st.session_state.nivel_acesso  = usuario.get("nivel","viewer")
+                    st.session_state.usuario_email = usuario.get("email", "")
+                    st.session_state.nivel_acesso  = usuario.get("nivel", "viewer")
                     st.rerun()
                 else:
-                    st.error("Usuário/e-mail ou senha incorretos.")
-            else:
-                st.warning("Preencha todos os campos.")
-        st.markdown('</div>', unsafe_allow_html=True)
-        st.markdown("<br>", unsafe_allow_html=True)
+                    st.error("Usuário ou senha incorretos.")
+
+        st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
         if st.button("🔑 Esqueci minha senha", use_container_width=True):
             st.session_state.tela_auth = "recuperar"
             st.rerun()
+
+        st.markdown("""
+        <div style='text-align:center;color:#3a4050;font-size:11px;margin-top:1.5rem'>
+            Grupo Prates · Macaé/RJ · v3.1
+        </div>
+        """, unsafe_allow_html=True)
 
 def tela_recuperar_senha():
     col = st.columns([1,1.2,1])[1]
@@ -350,34 +398,88 @@ def tela_redefinir_senha(token):
 # ── SIDEBAR ───────────────────────────────────────────────
 def sidebar():
     with st.sidebar:
-        logo = get_logo_b64()
-        if logo:
-            st.markdown(f'<div style="text-align:center;padding:16px 8px 4px"><img src="data:image/jpeg;base64,{logo}" width="80" style="border-radius:50%"></div>', unsafe_allow_html=True)
+        logo  = get_logo_b64()
         nivel = st.session_state.get("nivel_acesso","viewer")
         info  = NIVEIS[nivel]
-        st.markdown(
-            f'<div style="text-align:center;padding:4px 8px 4px">'
-            f'<div style="font-size:14px;font-weight:700;color:#e2e8f0;margin:4px 0 2px">Fechamento Mensal</div>'
-            f'<div style="font-size:11px;color:#6b7280">Grupo Prates</div>'
-            f'<div style="margin-top:6px"><span style="background:{info["cor"]}22;color:{info["cor"]};border:1px solid {info["cor"]}44;border-radius:99px;padding:2px 10px;font-size:11px">{info["icone"]} {info["label"]}</span></div>'
-            f'<div style="font-size:11px;color:#6b7280;margin-top:4px">👤 {st.session_state.get("usuario","")}</div>'
-            f'</div>', unsafe_allow_html=True
-        )
+        nome  = st.session_state.get("usuario","")
+
+        # Cabeçalho
+        if logo:
+            st.markdown(f"""
+            <div style='padding:16px 12px 8px;display:flex;align-items:center;gap:12px'>
+                <img src='data:image/jpeg;base64,{logo}'
+                     style='width:52px;height:52px;border-radius:10px;object-fit:cover;flex-shrink:0'>
+                <div>
+                    <div style='font-size:13px;font-weight:700;color:#e2e8f0'>Fechamento Mensal</div>
+                    <div style='font-size:11px;color:{info["cor"]}'>{info["icone"]} {nome} ({info["label"]})</div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown(f"""
+            <div style='padding:16px 12px 8px'>
+                <div style='font-size:14px;font-weight:700;color:#e2e8f0'>Fechamento Mensal</div>
+                <div style='font-size:11px;color:{info["cor"]};margin-top:2px'>{info["icone"]} {nome} ({info["label"]})</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        st.markdown('<hr style="border-color:#252932;margin:6px 0 10px">', unsafe_allow_html=True)
+        mes = st.text_input("📅 Mês", value=datetime.today().strftime('%Y-%m'), key="mes_ref")
         st.markdown('<hr style="border-color:#252932;margin:10px 0">', unsafe_allow_html=True)
-        mes = st.text_input("📅 Mês de referência", value=datetime.today().strftime('%Y-%m'), key="mes_ref")
+
+        if "pagina" not in st.session_state:
+            st.session_state.pagina = "📋 Checklist"
+
+        # Itens do menu com cores por categoria (estilo Sublimação)
+        MENU = [
+            ("📋", "Checklist",          "#22c55e"),
+            ("💰", "Apuração Financeira","#3b82f6"),
+            ("🎯", "Metas",              "#a855f7"),
+            ("⛪", "Igreja & Retiradas", "#f59e0b"),
+            ("📊", "Histórico",          "#06b6d4"),
+            ("📱", "Resumo WhatsApp",    "#22c55e"),
+        ]
+        if pode("gerenciar_usuarios"):
+            MENU.append(("👥", "Usuários", "#94a3b8"))
+
+        for icone, label, cor in MENU:
+            chave = f"{icone} {label}"
+            ativo = st.session_state.pagina == chave
+            st.markdown(f"""
+            <div style='
+                display:flex;align-items:center;gap:10px;
+                padding:8px 12px;border-radius:8px;margin:2px 0;
+                background:{"#1a2235" if ativo else "transparent"};
+                border-left:3px solid {cor if ativo else "transparent"};
+                cursor:pointer;
+            '>
+                <span style='font-size:16px'>{icone}</span>
+                <span style='font-size:13px;color:{"#e2e8f0" if ativo else "#8892a0"};
+                             font-weight:{"600" if ativo else "400"}'>{label}</span>
+            </div>
+            """, unsafe_allow_html=True)
+            if st.button(label, key=f"nav_{label}", use_container_width=True,
+                         label_visibility="collapsed"):
+                st.session_state.pagina = chave
+                st.rerun()
+
         st.markdown('<hr style="border-color:#252932;margin:10px 0">', unsafe_allow_html=True)
-        if "pagina" not in st.session_state: st.session_state.pagina = "📋 Checklist"
-        paginas = ["📋 Checklist","💰 Apuração Financeira","🎯 Metas","⛪ Igreja & Retiradas","📊 Histórico","📱 Resumo WhatsApp"]
-        if pode("gerenciar_usuarios"): paginas.append("👥 Usuários")
-        for item in paginas:
-            if st.button(item, key=f"nav_{item}", use_container_width=True):
-                st.session_state.pagina = item; st.rerun()
-        st.markdown('<hr style="border-color:#252932;margin:10px 0">', unsafe_allow_html=True)
-        if st.button("🚪 Sair", use_container_width=True):
+
+        # Botão Sair estilo Sublimação
+        st.markdown("""
+        <div style='display:flex;align-items:center;gap:10px;padding:8px 12px;
+                    border-radius:8px;border-left:3px solid #ef4444'>
+            <span style='font-size:16px'>🚪</span>
+            <span style='font-size:13px;color:#ef4444;font-weight:500'>Sair</span>
+        </div>
+        """, unsafe_allow_html=True)
+        if st.button("Sair", key="btn_sair", use_container_width=True,
+                     label_visibility="collapsed"):
             for k in ["logado","usuario_id","usuario","usuario_email","nivel_acesso","pagina"]:
                 st.session_state.pop(k, None)
             st.rerun()
-        st.markdown('<p style="text-align:center;color:#3a4050;font-size:10px;margin-top:8px">Grupo Prates · v3.1</p>', unsafe_allow_html=True)
+
+        st.markdown(f'<p style="text-align:center;color:#3a4050;font-size:10px;margin-top:12px">Grupo Prates · Macaé/RJ · v3.1</p>', unsafe_allow_html=True)
         return mes
 
 # ── PÁGINA USUÁRIOS ───────────────────────────────────────
