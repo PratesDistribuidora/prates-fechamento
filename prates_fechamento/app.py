@@ -9,6 +9,15 @@ import pandas as pd
 import os, base64
 
 _favicon = "📋"
+try:
+    from PIL import Image as _PIL_Image
+    for _p in ["prates_fechamento/logo.jpeg","prates_fechamento/logo.jpg",
+               "prates_fechamento/logo.png","logo.jpeg","logo.jpg","logo.png"]:
+        if os.path.exists(_p):
+            _favicon = _PIL_Image.open(_p)
+            break
+except Exception:
+    pass
 
 st.set_page_config(
     page_title="Fechamento Mensal · Grupo Prates",
@@ -126,16 +135,8 @@ html,body,[class*="css"]{font-family:'Segoe UI',sans-serif;}
 ::-webkit-scrollbar-thumb{background:#252932;border-radius:3px;}
 footer{visibility:hidden;} #MainMenu{visibility:hidden;}
 </style>
-<script>
-function fixSidebarButtons(){
-    document.querySelectorAll('[data-testid="stSidebar"] button').forEach(b=>{
-        b.style.justifyContent='flex-start';
-        b.style.textAlign='left';
-        b.style.display='flex';
-    });
-}
-setInterval(fixSidebarButtons, 500);
-</script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
 """, unsafe_allow_html=True)
 
 def fmt(v):
