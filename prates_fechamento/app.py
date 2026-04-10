@@ -347,10 +347,12 @@ def tela_login():
             </span>
         </div>
         """, unsafe_allow_html=True)
-        st.markdown("<div style='margin-top:6px;text-align:center'>", unsafe_allow_html=True)
-        if st.button("🔑 Esqueci minha senha", key="btn_forgot"):
-            st.session_state.tela_auth = "recuperar"
-            st.rerun()
+        st.markdown("<div style='margin-top:2px;text-align:center'>", unsafe_allow_html=True)
+        c1, c2, c3 = st.columns([1.2, 1, 1.2])
+        with c2:
+            if st.button("🔑 Esqueci minha senha", key="btn_forgot", use_container_width=True):
+                st.session_state.tela_auth = "recuperar"
+                st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
 
         st.markdown("""
