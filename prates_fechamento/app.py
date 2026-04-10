@@ -341,9 +341,11 @@ def tela_login():
                 else:
                     st.error("Usuário ou senha incorretos.")
 
-        if st.button("🔑 Esqueci minha senha", key="btn_esqueci_unico"):
-            st.session_state.tela_auth = "recuperar"
-            st.rerun()
+        col1, col2, col3 = st.columns([1, 1.5, 1])
+        with col2:
+            if st.button("🔑 Esqueci minha senha", key="btn_esqueci_unico", use_container_width=True):
+                st.session_state.tela_auth = "recuperar"
+                st.rerun()
 
         st.markdown("""
         <div style='text-align:center;margin-top:12px'>
