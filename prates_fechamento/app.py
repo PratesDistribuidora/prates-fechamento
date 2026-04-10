@@ -58,85 +58,7 @@ def pode(permissao):
     nivel = st.session_state.get("nivel_acesso", "viewer")
     return permissao in PERMISSOES.get(nivel, [])
 
-st.markdown("""
-<style>
-html,body,[class*="css"]{font-family:'Segoe UI',sans-serif;}
-[data-testid="stAppViewContainer"]{background:#111318;}
-[data-testid="stHeader"]{background:transparent;}
-[data-testid="stSidebar"]{background:#16191f;border-right:1px solid #252932;}
-[data-testid="stSidebar"] *{color:#c5cad3 !important;}
-[data-testid="stSidebar"] .stButton>button{
-    background:transparent !important;border:none !important;
-    border-radius:6px !important;
-    color:#94a3b8 !important;font-size:13px !important;font-weight:400 !important;
-    padding:9px 14px !important;
-    margin:1px 0 !important;box-shadow:none !important;
-    width:100% !important;transition:all .15s !important;
-    display:flex !important;flex-direction:row !important;
-    justify-content:flex-start !important;align-items:center !important;
-    text-align:left !important;
-}
-[data-testid="stSidebar"] .stButton>button:hover{
-    background:#1e293b !important;color:#e2e8f0 !important;
-}
-[data-testid="stSidebar"] .stButton>button *{
-    text-align:left !important;width:auto !important;
-    margin:0 !important;padding:0 !important;
-    flex:unset !important;
-}
-.stButton>button{background:#1e6b3e;color:#fff;border:none;border-radius:5px;padding:6px 16px;font-size:13px;font-weight:500;}
-.stButton>button:hover{background:#248a4e;}
-[data-testid="stSidebar"] [data-testid="stRadio"] label {
-    display:flex !important;align-items:center !important;
-    padding:8px 14px !important;border-radius:6px !important;
-    color:#8892a0 !important;font-size:13px !important;
-    cursor:pointer !important;transition:all .15s !important;
-    border-left:3px solid transparent !important;
-    margin:1px 0 !important;
-}
-[data-testid="stSidebar"] [data-testid="stRadio"] label:hover {
-    background:#1a2235 !important;color:#c5cad3 !important;
-}
-[data-testid="stSidebar"] [data-testid="stRadio"] [aria-checked="true"] + label,
-[data-testid="stSidebar"] [data-testid="stRadio"] label[data-checked="true"] {
-    background:#1a2235 !important;color:#e2e8f0 !important;
-    border-left:3px solid #22c55e !important;font-weight:600 !important;
-}
-[data-testid="stSidebar"] [data-testid="stRadio"] [data-testid="stMarkdownContainer"] p {
-    font-size:13px !important;
-}
-[data-testid="stSidebar"] [data-testid="stRadio"] div[role="radiogroup"] {
-    gap:0 !important;
-}
-[data-testid="stSidebar"] [data-testid="stRadio"] input[type="radio"] {
-    display:none !important;
-}
-[data-testid="stMetric"]{background:#16191f;border-radius:6px;padding:12px 14px;border:1px solid #252932;}
-[data-testid="stMetricLabel"]{color:#6b7280 !important;font-size:11px !important;}
-[data-testid="stMetricValue"]{color:#e2e8f0 !important;font-size:20px !important;font-weight:600 !important;}
-[data-testid="stTextInput"] input,[data-testid="stNumberInput"] input{
-    background:#16191f !important;border:1px solid #252932 !important;
-    border-radius:5px !important;color:#e2e8f0 !important;font-size:13px !important;
-}
-[data-testid="stSelectbox"]>div>div{background:#16191f !important;border:1px solid #252932 !important;border-radius:5px !important;}
-[data-testid="stExpander"]{background:#16191f !important;border:1px solid #252932 !important;border-radius:6px !important;margin-bottom:4px !important;}
-[data-testid="stTabs"] [role="tablist"]{background:transparent;border-bottom:1px solid #252932;}
-[data-testid="stTabs"] [role="tab"]{color:#6b7280 !important;font-size:13px !important;padding:8px 16px !important;}
-[data-testid="stTabs"] [role="tab"][aria-selected="true"]{color:#e2e8f0 !important;border-bottom:2px solid #2d7a4f !important;font-weight:600 !important;}
-[data-testid="stInfo"]{background:#0d1e35 !important;border:1px solid #1a3a5c !important;color:#7eb8f7 !important;border-radius:6px !important;}
-[data-testid="stSuccess"]{background:#0a1f12 !important;border:1px solid #1a4a2a !important;border-radius:6px !important;}
-[data-testid="stWarning"]{background:#1f1a0a !important;border:1px solid #3a2a0a !important;border-radius:6px !important;}
-[data-testid="stTextArea"] textarea{background:#16191f !important;border:1px solid #252932 !important;color:#e2e8f0 !important;font-size:13px !important;font-family:monospace !important;}
-.page-title{font-size:18px;font-weight:600;color:#e2e8f0;padding-bottom:10px;border-bottom:1px solid #252932;margin-bottom:20px;}
-.sec-label{font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.8px;margin:16px 0 8px 0;}
-.sugestao{background:#0d1e35;border:1px solid #1a3a5c;border-radius:6px;padding:8px 12px;font-size:12px;color:#7eb8f7;margin:4px 0 8px;}
-::-webkit-scrollbar{width:5px;height:5px;}
-::-webkit-scrollbar-track{background:#111318;}
-::-webkit-scrollbar-thumb{background:#252932;border-radius:3px;}
-footer{visibility:hidden;} #MainMenu{visibility:hidden;}
-</style>
 
-""", unsafe_allow_html=True)
 
 def fmt(v):
     if v is None or v == "": return "—"
@@ -827,6 +749,86 @@ if not st.session_state.get("logado"):
     with placeholder.container():
         tela_login()
     st.stop()
+
+st.markdown("""
+<style>
+html,body,[class*="css"]{font-family:'Segoe UI',sans-serif;}
+[data-testid="stAppViewContainer"]{background:#111318;}
+[data-testid="stHeader"]{background:transparent;}
+[data-testid="stSidebar"]{background:#16191f;border-right:1px solid #252932;}
+[data-testid="stSidebar"] *{color:#c5cad3 !important;}
+[data-testid="stSidebar"] .stButton>button{
+    background:transparent !important;border:none !important;
+    border-radius:6px !important;
+    color:#94a3b8 !important;font-size:13px !important;font-weight:400 !important;
+    padding:9px 14px !important;
+    margin:1px 0 !important;box-shadow:none !important;
+    width:100% !important;transition:all .15s !important;
+    display:flex !important;flex-direction:row !important;
+    justify-content:flex-start !important;align-items:center !important;
+    text-align:left !important;
+}
+[data-testid="stSidebar"] .stButton>button:hover{
+    background:#1e293b !important;color:#e2e8f0 !important;
+}
+[data-testid="stSidebar"] .stButton>button *{
+    text-align:left !important;width:auto !important;
+    margin:0 !important;padding:0 !important;
+    flex:unset !important;
+}
+.stButton>button{background:#1e6b3e;color:#fff;border:none;border-radius:5px;padding:6px 16px;font-size:13px;font-weight:500;}
+.stButton>button:hover{background:#248a4e;}
+[data-testid="stSidebar"] [data-testid="stRadio"] label {
+    display:flex !important;align-items:center !important;
+    padding:8px 14px !important;border-radius:6px !important;
+    color:#8892a0 !important;font-size:13px !important;
+    cursor:pointer !important;transition:all .15s !important;
+    border-left:3px solid transparent !important;
+    margin:1px 0 !important;
+}
+[data-testid="stSidebar"] [data-testid="stRadio"] label:hover {
+    background:#1a2235 !important;color:#c5cad3 !important;
+}
+[data-testid="stSidebar"] [data-testid="stRadio"] [aria-checked="true"] + label,
+[data-testid="stSidebar"] [data-testid="stRadio"] label[data-checked="true"] {
+    background:#1a2235 !important;color:#e2e8f0 !important;
+    border-left:3px solid #22c55e !important;font-weight:600 !important;
+}
+[data-testid="stSidebar"] [data-testid="stRadio"] [data-testid="stMarkdownContainer"] p {
+    font-size:13px !important;
+}
+[data-testid="stSidebar"] [data-testid="stRadio"] div[role="radiogroup"] {
+    gap:0 !important;
+}
+[data-testid="stSidebar"] [data-testid="stRadio"] input[type="radio"] {
+    display:none !important;
+}
+[data-testid="stMetric"]{background:#16191f;border-radius:6px;padding:12px 14px;border:1px solid #252932;}
+[data-testid="stMetricLabel"]{color:#6b7280 !important;font-size:11px !important;}
+[data-testid="stMetricValue"]{color:#e2e8f0 !important;font-size:20px !important;font-weight:600 !important;}
+[data-testid="stTextInput"] input,[data-testid="stNumberInput"] input{
+    background:#16191f !important;border:1px solid #252932 !important;
+    border-radius:5px !important;color:#e2e8f0 !important;font-size:13px !important;
+}
+[data-testid="stSelectbox"]>div>div{background:#16191f !important;border:1px solid #252932 !important;border-radius:5px !important;}
+[data-testid="stExpander"]{background:#16191f !important;border:1px solid #252932 !important;border-radius:6px !important;margin-bottom:4px !important;}
+[data-testid="stTabs"] [role="tablist"]{background:transparent;border-bottom:1px solid #252932;}
+[data-testid="stTabs"] [role="tab"]{color:#6b7280 !important;font-size:13px !important;padding:8px 16px !important;}
+[data-testid="stTabs"] [role="tab"][aria-selected="true"]{color:#e2e8f0 !important;border-bottom:2px solid #2d7a4f !important;font-weight:600 !important;}
+[data-testid="stInfo"]{background:#0d1e35 !important;border:1px solid #1a3a5c !important;color:#7eb8f7 !important;border-radius:6px !important;}
+[data-testid="stSuccess"]{background:#0a1f12 !important;border:1px solid #1a4a2a !important;border-radius:6px !important;}
+[data-testid="stWarning"]{background:#1f1a0a !important;border:1px solid #3a2a0a !important;border-radius:6px !important;}
+[data-testid="stTextArea"] textarea{background:#16191f !important;border:1px solid #252932 !important;color:#e2e8f0 !important;font-size:13px !important;font-family:monospace !important;}
+.page-title{font-size:18px;font-weight:600;color:#e2e8f0;padding-bottom:10px;border-bottom:1px solid #252932;margin-bottom:20px;}
+.sec-label{font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.8px;margin:16px 0 8px 0;}
+.sugestao{background:#0d1e35;border:1px solid #1a3a5c;border-radius:6px;padding:8px 12px;font-size:12px;color:#7eb8f7;margin:4px 0 8px;}
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:#111318;}
+::-webkit-scrollbar-thumb{background:#252932;border-radius:3px;}
+footer{visibility:hidden;} #MainMenu{visibility:hidden;}
+</style>
+
+""", unsafe_allow_html=True)
 
 mes, pag = sidebar()
 
