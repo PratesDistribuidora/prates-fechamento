@@ -830,6 +830,33 @@ footer{visibility:hidden;} #MainMenu{visibility:hidden;}
 
 """, unsafe_allow_html=True)
 
+# PWA leve — só roda uma vez por sessão
+if not st.session_state.get("_pwa_injetado"):
+    _logo = get_logo_b64()
+    if _logo:
+        import json
+        _ext = "png" if os.path.exists("logo.png") or os.path.exists("prates_fechamento/logo.png") else "jpeg"
+        _mime = "image/png" if _ext == "png" else "image/jpeg"
+        _ico = f"data:{_mime};base64,{_logo}"
+        _manifest = json.dumps({
+            "name": "Prates Fechamento",
+            "short_name": "Prates",
+            "start_url": "https://fechamento-prates.streamlit.app",
+            "display": "standalone",
+            "background_color": "#111318",
+            "theme_color": "#22c55e",
+            "icons": [{"src": _ico, "sizes": "192x192", "type": _mime, "purpose": "any maskable"}]
+        })
+        _mb64 = __import__('base64').b64encode(_manifest.encode()).decode()
+        st.markdown(f"""
+<link rel="apple-touch-icon" href="{_ico}">
+<link rel="manifest" href="data:application/json;base64,{_mb64}">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Prates Fechamento">
+<meta name="theme-color" content="#22c55e">
+""", unsafe_allow_html=True)
+    st.session_state["_pwa_injetado"] = True
+
 mes, pag = sidebar()
 
 if   "Checklist"  in pag: pagina_checklist(mes)
